@@ -1,0 +1,6 @@
+architectures:
+  - fno2d
+  - wno
+  - gno
+  - deeponet
+  - rino2d

@@ -1,0 +1,89 @@
+[
+  {
+    "benchmark_id": "rm3",
+    "name": "Reference Model 3",
+    "device_class": "two-body point absorber",
+    "source_urls": [
+      "https://data.openei.org/submissions/8009",
+      "https://wec-sim.github.io/WEC-Sim/main/user/tutorials.html"
+    ],
+    "known_characteristics": {
+      "float_mass_tonnes": 727.01,
+      "plate_mass_tonnes": 878.3,
+      "float_center_of_gravity_z_m": -0.72,
+      "plate_center_of_gravity_z_m": -21.29,
+      "heave_travel_m": 4.0,
+      "reaction_plate_bottom_depth_m": 35.0,
+      "deployment_depth_range_m": [
+        40.0,
+        100.0
+      ]
+    },
+    "available_assets": [
+      "geometry",
+      "mass_properties",
+      "tutorial_hydrodata"
+    ],
+    "status": "verified_open_source"
+  },
+  {
+    "benchmark_id": "mbari_wec_2021",
+    "name": "MBARI WEC 2021 deployment",
+    "device_class": "small two-body point absorber",
+    "source_urls": [
+      "https://mhkdr.openei.org/submissions/381"
+    ],
+    "known_characteristics": {
+      "paired_environmental_data": [
+        "wave",
+        "wind",
+        "temperature"
+      ],
+      "paired_response_data": [
+        "wec_hourly_production"
+      ]
+    },
+    "available_assets": [
+      "mat_file",
+      "spotter_csv",
+      "journal_reference"
+    ],
+    "status": "verified_open_source"
+  },
+  {
+    "benchmark_id": "aquaharmonics_1_20",
+    "name": "AquaHarmonics WEC 1:20 scale tank test",
+    "device_class": "point absorber",
+    "source_urls": [
+      "https://data.openei.org/submissions/7966"
+    ],
+    "known_characteristics": {
+      "scale": "1:20",
+      "campaign_year": 2018
+    },
+    "available_assets": [
+      "lab_data",
+      "control_context"
+    ],
+    "status": "verified_open_source"
+  },
+  {
+    "benchmark_id": "lupa_wecsim_moordyn",
+    "name": "Laboratory Upgrade Point Absorber",
+    "device_class": "point absorber",
+    "source_urls": [
+      "https://mhkdr.openei.org/submissions/572",
+      "https://mhkdr.openei.org/submissions/577"
+    ],
+    "known_characteristics": {
+      "includes_moorings": true,
+      "open_source_model": true
+    },
+    "available_assets": [
+      "wec_sim_model",
+      "moordyn_model",
+      "cad"
+    ],
+    "status": "verified_open_source"
+  }
+]

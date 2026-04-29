@@ -1,0 +1,8 @@
+numpy>=2.4
+PyYAML>=6.0
+torch>=2.11
+scipy>=1.17
+xarray>=2026.4
+pandas>=3.0
+netCDF4>=1.7
+requests>=2.33

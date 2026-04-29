@@ -1,0 +1,16 @@
+data:
+  path: data/phase1_wec_database.json
+  generate_if_missing:
+    n_samples: 48
+    seed: 7
+    train_frac: 0.7
+    val_frac: 0.15
+    frequencies:
+      start: 0.1
+      stop: 2.0
+      count: 24
+model:
+  ridge: 1.0e-10
+artifacts:
+  model_path: checkpoints/deeponet_wec_local.json
+  metrics_path: checkpoints/deeponet_wec_metrics.json

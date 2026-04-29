@@ -1,0 +1,270 @@
+"""Curated catalogue of open data sources relevant to NOSSO-MAR."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+import json
+
+
+@dataclass(frozen=True, slots=True)
+class OpenDataSource:
+    """Description of an open data source or benchmark catalogue."""
+
+    source_id: str
+    title: str
+    category: str
+    provider: str
+    access_url: str
+    data_url: str | None = None
+    format: str | None = None
+    license: str | None = None
+    access_mode: str = "metadata_only"
+    variables: tuple[str, ...] = ()
+    spatial_scope: str | None = None
+    temporal_scope: str | None = None
+    notes: str | None = None
+    tags: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["variables"] = list(self.variables)
+        payload["tags"] = list(self.tags)
+        return payload
+
+
+OPEN_DATA_CATALOG: tuple[OpenDataSource, ...] = (
+    OpenDataSource(
+        source_id="ndbc_stdmet",
+        title="NOAA National Data Buoy Center realtime standard meteorological data",
+        category="waves_wind",
+        provider="NOAA NDBC",
+        access_url="https://www.ndbc.noaa.gov/faq/realtime.shtml",
+        data_url="https://www.ndbc.noaa.gov/data/realtime2/{station_id}.txt",
+        format="text",
+        license="U.S. Government data",
+        access_mode="direct_download",
+        variables=(
+            "wave_height",
+            "dominant_period",
+            "average_period",
+            "wind_speed",
+            "wind_direction",
+            "air_temperature",
+            "water_temperature",
+            "pressure",
+        ),
+        spatial_scope="Station-based global buoy network",
+        temporal_scope="Realtime and archive",
+        notes="Single-station text feeds are lightweight enough for automated bootstrap downloads.",
+        tags=("waves", "wind", "metocean", "observations"),
+    ),
+    OpenDataSource(
+        source_id="noaa_coops_water_level",
+        title="NOAA CO-OPS observations and predictions API",
+        category="tides_currents",
+        provider="NOAA CO-OPS",
+        access_url="https://api.tidesandcurrents.noaa.gov/api/uat/",
+        data_url="https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+        format="json",
+        license="U.S. Government data",
+        access_mode="api",
+        variables=(
+            "water_level",
+            "wind",
+            "water_temperature",
+            "air_temperature",
+            "currents",
+        ),
+        spatial_scope="Station-based U.S. coastal network",
+        temporal_scope="Realtime, historical and predictions",
+        notes="Supports water levels, currents and meteorological products via a single query API.",
+        tags=("tides", "currents", "water_level", "wind", "temperature"),
+    ),
+    OpenDataSource(
+        source_id="oisst_v2_1",
+        title="NOAA Optimum Interpolation Sea Surface Temperature v2.1",
+        category="temperature",
+        provider="NOAA NCEI",
+        access_url="https://www.ncei.noaa.gov/products/optimum-interpolation-sst",
+        data_url=(
+            "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/"
+            "v2.1/access/avhrr/{yyyymm}/oisst-avhrr-v02r01.{yyyymmdd}.nc"
+        ),
+        format="netcdf4",
+        license="NOAA open data",
+        access_mode="direct_download",
+        variables=("sst", "anom", "ice"),
+        spatial_scope="Global 0.25 degree grid",
+        temporal_scope="1981-present daily",
+        notes="Daily gridded SST useful for boundary conditions and climatological context.",
+        tags=("temperature", "sst", "global_grid"),
+    ),
+    OpenDataSource(
+        source_id="gebco_grid",
+        title="GEBCO global gridded bathymetry",
+        category="bathymetry",
+        provider="GEBCO",
+        access_url="https://www.gebco.net/data-products/gridded-bathymetry-data",
+        format="netcdf/geotiff/ascii",
+        license="GEBCO terms",
+        access_mode="metadata_only",
+        variables=("bathymetry", "topography"),
+        spatial_scope="Global 15 arc-second grid",
+        temporal_scope="Periodic releases",
+        notes="Primary global bathymetry source for domain extraction and coarse morphology.",
+        tags=("bathymetry", "seabed", "terrain"),
+    ),
+    OpenDataSource(
+        source_id="emodnet_physics",
+        title="EMODnet Physics portal",
+        category="ocean_physics",
+        provider="EMODnet",
+        access_url="https://emodnet.ec.europa.eu/en/physics",
+        format="portal/catalogue",
+        license="Free of charge and no restrictions per portal statements",
+        access_mode="metadata_only",
+        variables=(
+            "temperature",
+            "salinity",
+            "currents",
+            "sea_level",
+            "wave_height",
+            "wave_period",
+            "wind_speed",
+            "wind_direction",
+        ),
+        spatial_scope="European seas and connected basins",
+        temporal_scope="Operational and historical in-situ time series",
+        notes="High-value European aggregation layer for Portuguese waters and offshore renewables.",
+        tags=("europe", "currents", "waves", "wind", "sea_level"),
+    ),
+    OpenDataSource(
+        source_id="emodnet_geology",
+        title="EMODnet Geology portal",
+        category="geology",
+        provider="EMODnet",
+        access_url="https://emodnet.ec.europa.eu/en/geology-2",
+        format="portal/catalogue",
+        license="Free access via EMODnet portal",
+        access_mode="metadata_only",
+        variables=(
+            "seabed_substrate",
+            "sedimentation_rate",
+            "seafloor_geology",
+            "coastline_behaviour",
+            "geological_events",
+        ),
+        spatial_scope="European seas and Caribbean coverage in recent releases",
+        temporal_scope="Periodic harmonised releases",
+        notes="Relevant for granulometry, geology and morphodynamics layers.",
+        tags=("geology", "granulometry", "substrate", "morphology"),
+    ),
+    OpenDataSource(
+        source_id="newa_atlas",
+        title="New European Wind Atlas",
+        category="wind_resource",
+        provider="NEWA consortium",
+        access_url="https://www.neweuropeanwindatlas.eu/mission",
+        format="web portal and API-backed maps",
+        license="Freely available atlas data",
+        access_mode="metadata_only",
+        variables=("wind_speed", "wind_direction", "wind_resource_statistics"),
+        spatial_scope="Europe plus 100 km offshore, Baltic and North Sea",
+        temporal_scope="Long-term atlas with mesoscale and microscale products",
+        notes="Useful for offshore wind forcing priors and joint wave-wind scenarios.",
+        tags=("wind", "atlas", "europe", "offshore"),
+    ),
+    OpenDataSource(
+        source_id="rm3_geometry",
+        title="Reference Model 3 full-scale geometry",
+        category="wec_benchmarks",
+        provider="OEDI / MHKDR",
+        access_url="https://data.openei.org/submissions/8009",
+        format="dataset landing page",
+        license="Repository-specific open dataset terms",
+        access_mode="metadata_only",
+        variables=("geometry", "mass_properties", "reference_site"),
+        spatial_scope="Device benchmark",
+        temporal_scope="Static benchmark description",
+        notes="Canonical open two-body point absorber benchmark for WEC studies.",
+        tags=("wec", "rm3", "point_absorber", "benchmark"),
+    ),
+    OpenDataSource(
+        source_id="mbari_wec_2021",
+        title="MBARI WEC 2021 deployment",
+        category="wec_benchmarks",
+        provider="MHKDR",
+        access_url="https://mhkdr.openei.org/submissions/381",
+        format="dataset landing page",
+        license="Repository-specific open dataset terms",
+        access_mode="metadata_only",
+        variables=("wec_power", "spotter_wave_data", "wind", "temperature"),
+        spatial_scope="Monterey Bay deployment",
+        temporal_scope="2021 deployment campaign",
+        notes="Field dataset coupling WEC response with nearby buoy observations.",
+        tags=("wec", "field_data", "mbari", "spotter_buoy"),
+    ),
+    OpenDataSource(
+        source_id="aquaharmonics_tank_test",
+        title="AquaHarmonics 1:20 scale tank test data",
+        category="wec_benchmarks",
+        provider="OEDI / MHKDR",
+        access_url="https://data.openei.org/submissions/7966",
+        format="dataset landing page",
+        license="Repository-specific open dataset terms",
+        access_mode="metadata_only",
+        variables=("tank_test_timeseries", "phase_control", "lab_measurements"),
+        spatial_scope="Wave tank benchmark",
+        temporal_scope="2018 lab campaigns",
+        notes="Useful for controlled validation of WEC control and identification workflows.",
+        tags=("wec", "tank_test", "aquaharmonics", "control"),
+    ),
+    OpenDataSource(
+        source_id="lupa_wecsim_moordyn",
+        title="Laboratory Upgrade Point Absorber WEC-Sim model with MoorDyn",
+        category="wec_benchmarks",
+        provider="MHKDR",
+        access_url="https://mhkdr.openei.org/submissions/572",
+        format="dataset landing page",
+        license="Repository-specific open dataset terms",
+        access_mode="metadata_only",
+        variables=("wec_sim_model", "mooring_model"),
+        spatial_scope="Device benchmark",
+        temporal_scope="Static model package",
+        notes="Open-source benchmark for coupled device and mooring simulation.",
+        tags=("wec", "lupa", "moordyn", "wec-sim"),
+    ),
+    OpenDataSource(
+        source_id="wecsim_rm3_tutorial",
+        title="WEC-Sim RM3 tutorial and mass properties",
+        category="wec_benchmarks",
+        provider="WEC-Sim",
+        access_url="https://wec-sim.github.io/WEC-Sim/main/user/tutorials.html",
+        format="documentation",
+        license="Project documentation terms",
+        access_mode="metadata_only",
+        variables=("mass", "center_of_gravity", "inertia_tensor", "hydrodata"),
+        spatial_scope="Device benchmark",
+        temporal_scope="Versioned docs",
+        notes="Documentation source for verified RM3 dimensions, inertia and setup conventions.",
+        tags=("wec", "rm3", "tutorial", "hydrodata"),
+    ),
+)
+
+
+def catalog_records() -> list[dict[str, Any]]:
+    """Return a JSON-ready copy of the curated catalogue."""
+
+    return [entry.to_dict() for entry in OPEN_DATA_CATALOG]
+
+
+def write_catalog(output_path: str | Path) -> Path:
+    """Persist the curated catalogue to disk."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(catalog_records(), handle, indent=2)
+    return path

@@ -1,0 +1,9 @@
+n_samples: 48
+seed: 7
+train_frac: 0.7
+val_frac: 0.15
+frequencies:
+  start: 0.1
+  stop: 2.0
+  count: 24
+output_path: data/phase1_wec_database.json

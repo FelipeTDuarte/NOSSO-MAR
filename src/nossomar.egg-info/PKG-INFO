@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: nossomar
+Version: 0.1.0
+Summary: Multi-fidelity neural-operator workspace for the NOSSO-MAR project.
+Requires-Python: >=3.14
+Requires-Dist: numpy>=2.4
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: torch>=2.11
+Requires-Dist: scipy>=1.17
+Requires-Dist: xarray>=2026.4
+Requires-Dist: pandas>=3.0
+Requires-Dist: netCDF4>=1.7
+Requires-Dist: requests>=2.33

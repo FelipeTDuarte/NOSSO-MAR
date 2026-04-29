@@ -1,0 +1,6 @@
+root_dir: data/open_database
+ndbc_station: "41009"
+coops_station: "9414290"
+coops_days: 2
+oisst_date: null
+include_metadata_snapshots: true

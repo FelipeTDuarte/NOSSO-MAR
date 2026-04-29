@@ -1,0 +1,17 @@
+phase: 1
+model: deeponet_wec
+branch_dim: 4
+trunk_dim: 1
+hidden: 128
+n_modes: 64
+training:
+  epochs: 100
+  lr: 3.0e-4
+  batch_size: 64
+  weight_decay: 1.0e-5
+data:
+  n_cases: 1000
+  seed: 42
+  omega_min: 0.2
+  omega_max: 4.0
+  omega_n: 40

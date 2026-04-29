@@ -1,0 +1,6 @@
+freq_count: 24
+freq_start_hz: 0.1
+freq_stop_hz: 2.0
+generator: analytic_phase1_baseline
+n_samples: 48
+seed: 7
