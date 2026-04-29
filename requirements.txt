@@ -1,0 +1,11 @@
+numpy
+scipy
+xarray
+pandas
+netCDF4
+torch
+fsspec
+pyyaml
+pre-commit
+pytest
+jupyter

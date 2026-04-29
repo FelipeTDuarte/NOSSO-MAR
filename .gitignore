@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+.ipynb_checkpoints/
+.DS_Store
+
+# Data
+data/raw/
+data/processed/
+*.nc
+*.mat
+*.h5
+*.zarr
+
+# Outputs
+outputs/
+logs/
+artifacts/
+checkpoints/
+
+# VSCode
+.vscode/
