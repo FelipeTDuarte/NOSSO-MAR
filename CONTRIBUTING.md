@@ -1,12 +1,23 @@
 # Contributing to NOSSO-MAR
 
-Thank you for contributing. Short guide:
+Thank you for your interest in contributing!
 
-1. Fork the repository and clone your fork.
-2. Create a feature branch: `git checkout -b feature/<short-name>`.
-3. Write tests first (TDD) and run them locally.
-4. Implement changes and ensure linters pass (`pre-commit` hooks).
-5. Commit, push your branch, and open a Pull Request to `develop`.
-6. Request review and address comments.
+## Quick guide
 
-See `docs/CONTRIBUTING.md` for the full workflow and templates.
+1. Fork the repository and clone your fork
+2. Create a feature branch: `git checkout -b task-N-short-description`
+3. Read the relevant spec in `specs/` before writing any code
+4. Write tests first (TDD) — see `docs/CONTRIBUTING.md`
+5. Run: `pytest tests/ -v` and ensure all tests pass
+6. Open a Pull Request to `develop`
+
+## Full guide
+
+For the detailed TDD workflow, issue and PR templates, commit conventions,
+and subagent dispatch, read:
+
+→ **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)**
+
+## Code of Conduct
+
+→ **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**
