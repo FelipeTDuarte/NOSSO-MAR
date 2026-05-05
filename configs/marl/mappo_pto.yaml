@@ -1,0 +1,17 @@
+# MAPPO — Per-WEC PTO control (Phase 7)
+algorithm:      mappo
+n_agents:       10
+state_dim:      8            # local eta, u, RAO, Hs, Tp, current damping
+action_dim:     1            # delta(B_pto) — damping adjustment
+
+training:
+  episodes:     5000
+  batch_size:   128
+  lr:           3.0e-4
+  clip_eps:     0.2          # PPO clip
+  gae_lambda:   0.95
+
+reward:
+  type:         individual_plus_cooperative
+  weights:      [0.7, 0.3]   # individual power vs. farm total
+  
