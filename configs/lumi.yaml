@@ -1,0 +1,7 @@
+cluster:         lumi
+n_nodes:         16
+walltime:        "24:00:00"
+account:         "project_462000000"
+mixed_precision: true
+checkpoint_dir:  /scratch/project_462000000/nosso_mar/checkpoints
+data_dir:        /scratch/project_462000000/nosso_mar/data
