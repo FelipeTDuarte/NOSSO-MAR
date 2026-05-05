@@ -2,6 +2,8 @@
 
 > **Status**: Phase 2 (planned). Reference configs in `configs/hpc/`.
 
+---
+
 ## Supported clusters (planned)
 
 | Cluster | Institution | Country | GPUs/node | GPU | Config |
@@ -13,6 +15,46 @@
 
 All four are EuroHPC Joint Undertaking supercomputers. Access is available
 both via national allocations and transnational EuroHPC calls.
+
+---
+
+## Adding a new cluster
+
+If your cluster is not listed above, use one of the generic templates:
+
+| Scheduler | Template | Covers |
+|-----------|----------|--------|
+| **SLURM** | `configs/hpc/generic_slurm.yaml` | ~50% of HPC sites worldwide — LUMI, MN5, Leonardo, Deucalion, and most academic clusters |
+| **PBS / OpenPBS** | `configs/hpc/generic_pbs.yaml` | ~32% of sites — older university clusters, some national labs |
+
+### Which scheduler does my cluster use?
+
+```bash
+which sbatch   # SLURM — if this returns a path
+which qsub     # PBS/OpenPBS/Torque — if this returns a path
+which bsub     # IBM LSF — enterprise/commercial clusters
+```
+
+### Steps to add a new cluster
+
+```bash
+# 1. Copy the right template
+cp configs/hpc/generic_slurm.yaml configs/hpc/my_cluster.yaml
+
+# 2. Find your partition name
+sinfo -s                          # SLURM
+qstat -Q                          # PBS
+
+# 3. Find your account name
+sacctmgr show user $USER          # SLURM
+qstat -u $USER                    # PBS
+
+# 4. Find your scratch path
+echo $SCRATCH                     # most clusters
+df -h ~                           # or check quota and filesystem
+
+# 5. Fill in the placeholders and commit
+```
 
 ---
 
@@ -33,7 +75,7 @@ For Phase 2 large operators (F-FNO, 3D grids, full EnKF ensembles) prefer
 #SBATCH --constraint=a100_80gb   # check availability with MACC support
 ```
 
-Access: national quota via FCT, or transnational via EuroHPC JU regular/benchmark calls.
+Access: national quota via FCT, or transnational via EuroHPC JU calls.
 Apply at: https://www.eurohpc-ju.europa.eu/access-our-supercomputers
 
 ---
@@ -56,20 +98,28 @@ from nosso_mar.hpc.slurm_launcher import SLURMLauncher
 SLURMLauncher.from_config('configs/hpc/lumi.yaml').submit(
     'scripts/train_phase1.py', 'configs/training/ffno_large.yaml')
 "
+
+# Example: any new cluster using a generic config
+python -c "
+from nosso_mar.hpc.slurm_launcher import SLURMLauncher
+SLURMLauncher.from_config('configs/hpc/my_cluster.yaml').submit(
+    'scripts/train_phase1.py', 'configs/training/deeponet_wec.yaml')
+"
 ```
 
 ---
 
-## Mixed precision by cluster
+## Mixed precision by GPU
 
-| Cluster | GPU | Recommended precision |
-|---------|-----|-----------------------|
-| LUMI | AMD MI250X | BF16 (native) |
-| MareNostrum 5 | H100 | BF16 (native) |
-| Leonardo | A100 | FP16 (with GradScaler) |
-| Deucalion | A100 | FP16 (with GradScaler) |
+| GPU | Recommended precision | Notes |
+|-----|-----------------------|-------|
+| AMD MI250X | BF16 (native) | LUMI |
+| H100 | BF16 (native) | MareNostrum 5 |
+| A100 | FP16 (with GradScaler) | Leonardo, Deucalion |
+| V100 | FP16 (with GradScaler) | older clusters |
+| RTX 30/40 series | BF16 | consumer / university clusters |
 
-All configs have `mixed_precision: true` set. The training code selects
+All configs have `mixed_precision: true`. The training script selects
 BF16 or FP16 automatically based on GPU capability at runtime.
 
 ---
@@ -96,6 +146,8 @@ in each cluster config points to the correct scratch filesystem.
 | MareNostrum 5 | `/gpfs/scratch/*/nosso_mar/` |
 | Leonardo | `/leonardo_scratch/*/nosso_mar/` |
 | Deucalion | `/scratch/*/nosso_mar/` (DDN EXAScaler, 10.6 PB) |
+| Generic | Set `checkpoint_dir` / `data_dir` in your cluster config |
 
-All paths are set in the corresponding `configs/hpc/*.yaml` file.
-Update the `your_*_account` placeholders before submitting jobs.
+Always use the cluster's **scratch filesystem**, not home — quota on home
+directories is typically too small for ML datasets and checkpoints.
+Update the `your_*_account` placeholders in the config before submitting.
