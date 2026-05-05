@@ -1,0 +1,200 @@
+# Training config: FNO2d / WNO / GNO / RINO for F1B — FULL 4-STAGE PIPELINE
+#
+# All operators trained on the same F1B task and same loss stack for fair comparison.
+# Implements spec 09 training stages A→D.
+# Architecture selection guide from spec 04 is encoded in comments per operator.
+#
+# Operators: fno2d, ffno2d, wno, gno, rino2d (factory.py)
+# Dataset:   data/phase1_wave_f1b.zarr (OceanWave3D/SWASH)
+
+# ── Shared dataset config ─────────────────────────────────────────────────────
+dataset:
+  source:   data/phase1_wave_f1b.zarr
+  open_bc:
+    ndbc:   data/open_database/downloads/ndbc/41009.txt
+    coops:  data/open_database/downloads/coops/
+  cfd_calibration:
+    n_cases: 15
+    bridge:  cfd_snapshot_to_phase_fields    # multifidelity.py — Stage D only
+
+# ── Shared loss stack ─────────────────────────────────────────────────────────
+# Applied identically to all operators for fair comparison
+loss_shared:
+  stage_a:
+    supervised_weight:     1.0
+    physics_weight:        0.0
+    cross_fidelity_weight: 0.0
+
+  stage_b:
+    supervised_weight:     1.0
+    physics_weight:        0.05
+    cross_fidelity_weight: 0.02
+
+  stage_c:
+    supervised_weight:     1.0
+    physics_weight:        0.1
+    cross_fidelity_weight: 0.05
+    curriculum:
+      physics_ramp: {start_epoch: 0, end_epoch: 100, start: 0.0, end: 0.1}
+
+  stage_d:
+    supervised_weight:     1.0
+    physics_weight:        0.2
+    cross_fidelity_weight: 0.1
+
+physics_terms:
+  shallow_water_residual:  true   # residuals_torch.py: shallow_water_residual
+  wave_action_residual:    true   # residuals_torch.py: wave_action_balance_residual
+  causality:               true
+  boundary_compliance:     true
+  residuals_module: src/nossomar/physics/residuals_torch.py
+
+cross_fidelity_terms:
+  spectral_consistency:  true    # phase_series_to_spectrum (multifidelity.py)
+  Hs_Tp_consistency:     true    # bulk_wave_statistics (multifidelity.py)
+  cfd_downgrade:         true    # Stage D only
+  bridge_module: src/nossomar/physics/multifidelity.py
+
+# ── Shared acceptance criteria ────────────────────────────────────────────────
+# Spec 04 targets — all operators must meet these to be considered valid
+acceptance_final:
+  eta_rmse_m:           0.10        # absolute RMSE < 10 cm
+  eta_rmse_rel_pct:     10.0
+  Hs_error_pct:         10.0
+  Tp_error_pct:         10.0
+  energy_balance_pct:   5.0
+  dispersion_error_pct: 5.0
+  causality_violations: 0
+
+# ── FNO2d ─────────────────────────────────────────────────────────────────────
+# Spec 04: best for regular grids, rectangular domains, speed-critical cases
+fno2d:
+  operator: fno2d
+  use_when: regular_grid_rectangular_domain
+
+  architecture:
+    in_channels:  5
+    out_channels: 3                  # η, u, v
+    width:        64
+    modes_x:      12
+    modes_y:      12
+    n_layers:     4
+
+  stages:
+    a: {epochs: 100, batch_size: 16, lr: 1.0e-3, scheduler: cosine}
+    b: {epochs: 200, batch_size: 16, lr: 5.0e-4, scheduler: cosine}
+    c: {epochs: 300, batch_size: 16, lr: 1.0e-4, scheduler: cosine_with_restarts}
+    d: {epochs: 100, batch_size:  8, lr: 1.0e-5, scheduler: constant}
+
+  artifacts:
+    checkpoint: checkpoints/fno2d_wave_f1b_best.pt
+    metrics:    checkpoints/f1b_fno2d_metrics.json
+
+# ── F-FNO2d ───────────────────────────────────────────────────────────────────
+# Factorized FNO — better for high-res or anisotropic domains (HPC Stage D)
+ffno2d:
+  operator: ffno2d
+  use_when: high_resolution_or_anisotropic_domain
+
+  architecture:
+    in_channels:  5
+    out_channels: 3
+    width:        128
+    modes_x:      24
+    modes_y:      24
+    n_layers:     6
+    factorized:   true
+
+  stages:
+    a: {epochs: 100, batch_size:  8, lr: 1.0e-3, scheduler: cosine, mixed_precision: true}
+    b: {epochs: 200, batch_size:  8, lr: 5.0e-4, scheduler: cosine, mixed_precision: true}
+    c: {epochs: 300, batch_size:  8, lr: 1.0e-4, scheduler: cosine_with_restarts, mixed_precision: true}
+    d: {epochs: 100, batch_size:  4, lr: 1.0e-5, scheduler: constant, mixed_precision: true}
+
+  artifacts:
+    checkpoint: checkpoints/ffno2d_wave_f1b_best.pt
+    metrics:    checkpoints/f1b_ffno2d_metrics.json
+
+# ── WNO ───────────────────────────────────────────────────────────────────────
+# Spec 04: multi-scale spatial structure, shoaling, localized gradients, breaking
+wno:
+  operator: wno
+  use_when: multi_scale_spatial_structure_or_shoaling
+
+  architecture:
+    in_channels:  5
+    out_channels: 3
+    width:        64
+    levels:       3
+    n_layers:     4
+
+  stages:
+    a: {epochs: 100, batch_size: 16, lr: 1.0e-3, scheduler: cosine}
+    b: {epochs: 200, batch_size: 16, lr: 5.0e-4, scheduler: cosine}
+    c: {epochs: 300, batch_size: 16, lr: 1.0e-4, scheduler: cosine_with_restarts}
+    d: {epochs: 100, batch_size:  8, lr: 1.0e-5, scheduler: constant}
+
+  artifacts:
+    checkpoint: checkpoints/wno_wave_f1b_best.pt
+    metrics:    checkpoints/f1b_wno_metrics.json
+
+# ── GNO ───────────────────────────────────────────────────────────────────────
+# Spec 04: irregular geometry, coastlines, device arrays embedded in field
+gno:
+  operator: gno
+  use_when: irregular_geometry_or_device_arrays_in_domain
+
+  architecture:
+    node_in_dim:  6
+    node_out_dim: 3
+    hidden:       64
+    n_layers:     4
+
+  stages:
+    a: {epochs: 100, batch_size: 16, lr: 1.0e-3, scheduler: cosine}
+    b: {epochs: 200, batch_size: 16, lr: 5.0e-4, scheduler: cosine}
+    c: {epochs: 300, batch_size: 16, lr: 1.0e-4, scheduler: cosine_with_restarts}
+    d: {epochs: 100, batch_size:  8, lr: 1.0e-5, scheduler: constant}
+
+  artifacts:
+    checkpoint: checkpoints/gno_wave_f1b_best.pt
+    metrics:    checkpoints/f1b_gno_metrics.json
+
+# ── RINO2d ─────────────────────────────────────────────────────────────────────
+# Spec 04: resolution transfer, query-based decoding — bridge baseline
+rino2d:
+  operator: rino2d
+  use_when: resolution_transfer_or_super_resolution
+
+  architecture:
+    in_channels:  5
+    out_channels: 3
+
+  stages:
+    a: {epochs: 100, batch_size: 16, lr: 1.0e-3, scheduler: cosine}
+    b: {epochs: 200, batch_size: 16, lr: 5.0e-4, scheduler: cosine}
+    c: {epochs: 300, batch_size: 16, lr: 1.0e-4, scheduler: cosine_with_restarts}
+    d: {epochs: 100, batch_size:  8, lr: 1.0e-5, scheduler: constant}
+
+  artifacts:
+    checkpoint: checkpoints/rino2d_wave_f1b_best.pt
+    metrics:    checkpoints/f1b_rino2d_metrics.json
+
+# ── Architecture sweep prerequisite (spec 09) ─────────────────────────────────
+# Must pass before any Stage B+ training run
+sweep_prerequisite:
+  command: python scripts/smoke_operator_sweep.py
+  config:  configs/operator_sweep.yaml
+  pass_condition: all_operators_forward_pass_finite_loss
+
+# ── Comparison output ──────────────────────────────────────────────────────────
+comparison:
+  output: checkpoints/f1b_operator_comparison.json
+  metrics: [eta_rmse_m, Hs_error_pct, dispersion_error_pct, inference_time_ms, param_count]
+  winner_criterion: eta_rmse_m       # primary metric for F1B operator selection
+
+# ── Reproducibility ────────────────────────────────────────────────────────────
+reproducibility:
+  seed:        44
+  variance_tol: 0.001
+  log_dir:     runs/tensorboard/f1b/
