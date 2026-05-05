@@ -1,0 +1,24 @@
+# MADDPG — WEC farm layout optimisation (Phase 7)
+algorithm:      maddpg
+n_agents:       10           # number of WECs in the farm
+state_dim:      12           # local wave spectrum + position + neighbour positions
+action_dim:     2            # delta_x, delta_y (metres)
+action_bound:   50.0         # maximum displacement per step
+
+training:
+  episodes:     10000
+  batch_size:   256
+  lr_actor:     1.0e-4
+  lr_critic:    1.0e-3
+  gamma:        0.99
+  tau:          0.01         # soft update factor
+
+reward:
+  type:         cooperative
+  terms:        [total_power, spacing_penalty, boundary_penalty]
+  weights:      [1.0, 0.1, 0.5]
+
+environment:
+  wave_operator: f1b_wno     # wave field operator
+  wsi_operator:  f1a_deeponet
+  
