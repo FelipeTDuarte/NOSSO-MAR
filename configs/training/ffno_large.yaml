@@ -1,0 +1,13 @@
+operator:    ffno2d
+modes:       [24, 24]
+width:       128
+n_layers:    6
+factorized:  true
+
+training:
+  epochs:          500
+  batch_size:      8      # per GPU, with DDP
+  lr:              5.0e-4
+  mixed_precision: true
+  n_gpus:          4
+  
