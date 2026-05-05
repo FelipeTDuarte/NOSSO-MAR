@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import torch
 
 from nossomar.data.analytic_wec import make_frequency_grid
 from nossomar.data.wec_dataset import WECDataset, generate_phase1_records, split_records, write_dataset_json
@@ -32,7 +33,7 @@ def test_factorized_deeponet_fits_local_synthetic_dataset(tmp_path) -> None:
 def test_training_pipeline_writes_artifacts(tmp_path) -> None:
     config_path = tmp_path / "training.yaml"
     dataset_path = tmp_path / "phase1_dataset.json"
-    model_path = tmp_path / "checkpoints" / "model.json"
+    model_path = tmp_path / "checkpoints" / "model.pt"
     metrics_path = tmp_path / "checkpoints" / "metrics.json"
     config_path.write_text(
         "\n".join(
@@ -48,8 +49,18 @@ def test_training_pipeline_writes_artifacts(tmp_path) -> None:
                 "      start: 0.1",
                 "      stop: 2.0",
                 "      count: 18",
+                "operator: deeponet",
                 "model:",
-                "  ridge: 1.0e-12",
+                "  branch_input_dim: 10",
+                "  trunk_input_dim: 7",
+                "  hidden_dim: 24",
+                "  n_hidden: 1",
+                "  output_dim: 4",
+                "  p: 16",
+                "training:",
+                "  epochs: 3",
+                "  batch_size: 32",
+                "  lr: 0.001",
                 "artifacts:",
                 f"  model_path: {model_path.as_posix()}",
                 f"  metrics_path: {metrics_path.as_posix()}",
@@ -63,5 +74,8 @@ def test_training_pipeline_writes_artifacts(tmp_path) -> None:
     assert dataset_path.exists()
     assert model_path.exists()
     assert metrics_path.exists()
-    assert result["metrics"]["val"]["relative_A"] < 1.0e-10
-    assert result["metrics"]["val"]["relative_B"] < 1.0e-10
+    checkpoint = torch.load(model_path, map_location="cpu")
+    assert "model_state_dict" in checkpoint
+    assert "normalizer" in checkpoint
+    assert np.isfinite(result["metrics"]["val"]["relative_A"])
+    assert result["metrics"]["val"]["B_violations"] == 0

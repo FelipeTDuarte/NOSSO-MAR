@@ -9,8 +9,21 @@ data:
       start: 0.1
       stop: 2.0
       count: 24
+operator: deeponet
 model:
-  ridge: 1.0e-10
+  branch_input_dim: 10
+  trunk_input_dim: 7
+  hidden_dim: 64
+  n_hidden: 2
+  output_dim: 4
+  p: 32
+  activation: tanh
+training:
+  epochs: 25
+  batch_size: 64
+  lr: 0.001
+  scheduler: cosine
+  early_stopping_patience: 8
 artifacts:
-  model_path: checkpoints/deeponet_wec_local.json
+  model_path: checkpoints/deeponet_wec_local.pt
   metrics_path: checkpoints/deeponet_wec_metrics.json

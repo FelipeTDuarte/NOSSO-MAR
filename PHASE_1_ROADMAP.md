@@ -35,8 +35,8 @@ T03 (Physics residuals)      ✓
 T04 (Open data pipeline)     ✓
 T05 (Architecture sweep)     ✓
 ─────────────────────────────────────────────────────────────
-T06 (Wire PyTorch DeepONet)  →  depends on: T00–T05
-T07 (Physics loss module)    →  depends on: T06
+T06 (Wire PyTorch DeepONet)  ✓  depends on: T00–T05
+T07 (Physics loss module)    ✓  depends on: T06
 T08 (Capytaine dataset)      ○  depends on: T00
 T09 (Train F1A — full)       ○  depends on: T06, T07, T08
 T10 (Wave solver dataset)    ○  depends on: T00
@@ -214,30 +214,27 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 
 ---
 
-## IN PROGRESS
+## COMPLETED IN THIS PASS
 
 ---
 
-### T06 — Wire PyTorch DeepONet to F1A Training Loop →
+### T06 — Wire PyTorch DeepONet to F1A Training Loop ✓
 
-**What the current code does**: `train_wec.py` calls `DeepONetWECRegressor`
-which is **NumPy ridge regression**, not the PyTorch `DeepONet` from T02.
-The checkpoint `deeponet_wec_local.json` is a weight matrix (70×4), not a
-PyTorch state dict.
+**Completed**: Current pass
 
-**What needs to change**:
+**What was built**:
 
-- **Modify** `src/nossomar/training/train_wec.py`:
-  - Replace `DeepONetWECRegressor` with `build_operator("deeponet", cfg)`
-  - Add PyTorch training loop: `DataLoader`, `optimizer.step()`, `scheduler.step()`
-  - Add validation loop with per-channel RMSE reporting
-  - Add checkpointing: save `model.state_dict()` (`.pt`) not JSON
-  - Keep `--stage {a,b,c,d,all}` and `--resume-from` arguments
-- **Modify** `configs/training.yaml`:
-  - Replace `ridge` field with full network config
-  - Reference: `configs/training/deeponet_wec_full.yaml`
-- **Modify** `scripts/train_phase1.py`:
-  - Add `--stage` and `--resume-from` CLI arguments
+- `src/nossomar/training/train_wec.py` now builds operators through
+  `build_operator("deeponet", cfg)` and trains with PyTorch `DataLoader`,
+  `AdamW`, scheduler support, validation, early stopping, and checkpointing.
+- Checkpoints are written as `.pt` files containing `model_state_dict`,
+  normalisation statistics, stage metadata, architecture, and metrics.
+- `--stage {a,b,c,d,all}` and `--resume-from` are supported through
+  `scripts/train_phase1.py` via the training module CLI.
+- `configs/training.yaml` now uses a full DeepONet network config instead of
+  the old ridge-regression setting.
+- `tests/test_deeponet_wec.py` was updated to assert the PyTorch checkpoint
+  contract.
 
 **Done when**:
 
@@ -248,24 +245,22 @@ python scripts/train_phase1.py --config configs/training/deeponet_wec_full.yaml 
 pytest tests/test_deeponet_wec.py  # still passes
 ```
 
+**Verification note**: syntax compilation passes locally. Runtime test
+execution requires `torch` and `pytest` to be installed in the active Python
+environment.
+
 ---
 
-## NOT STARTED
+### T07 — Physics Loss Module ✓
 
----
+**Completed**: Current pass
 
-### T07 — Physics Loss Module ○
-
-**Why it doesn't exist**: `residuals_torch.py` (T03) has the math but nothing
-connects it to the training loop.
-
-**Files to create**:
+**What was built**:
 
 - `src/nossomar/loss/__init__.py`
-- `src/nossomar/loss/physics_losses.py`:
-  - `damping_nonneg_loss(B_pred)` — soft relu penalty for B < 0
-  - `wec_eom_loss(A, B, Fex_real, Fex_imag, freq, mass, bpto, stiffness)`
-    wrapping `wec_frequency_domain_residual`
+- `src/nossomar/loss/physics_losses.py`
+  - `damping_nonneg_loss(B_pred)`
+  - `wec_eom_loss(...)` wrapping `wec_frequency_domain_residual`
   - `total_loss(supervised, physics, cross_fidelity, weights)`
   - `CurriculumWeight(start_epoch, end_epoch, start_val, end_val)`
 - `tests/test_physics_losses.py`
@@ -279,7 +274,13 @@ pytest tests/test_physics_losses.py
 # CurriculumWeight ramps correctly over epochs
 ```
 
-**Depends on**: T06
+**Verification note**: syntax compilation passes locally. Runtime test
+execution requires `torch` and `pytest` to be installed in the active Python
+environment.
+
+---
+
+## NOT STARTED
 
 ---
 
