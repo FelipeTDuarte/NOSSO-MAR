@@ -3,7 +3,7 @@
 
 ---
 
-## Honest state of the repo right now
+## State of the repo right now
 
 Before the plan, what actually exists vs what the roadmap claims:
 
