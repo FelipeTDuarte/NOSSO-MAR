@@ -1,0 +1,149 @@
+# Phase 1C — Bidirectional Wave ↔ WEC Coupling — FULL SCOPE
+#
+# Integrates F1A and F1B into a coupled system where the wave field affects
+# device response and device radiation modifies the wave field.
+#
+# Phase 1: iterative coupling prototype (IterativeCoupledOperator)
+# Phase 2: end-to-end joint training (CoupledPINOOperator)
+#
+# Specs: 05_F1C_COUPLING.md, 06_SCIENTIFIC_MODULES.md, 09_TRAINING_LOOP.md
+# Depends on: F1A (deeponet / gno), F1B (fno2d / wno / gno)
+
+name:    phase1_full_f1c
+phase:   1
+task:    F1C
+status:  active
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+requires:
+  f1a_checkpoint: checkpoints/deeponet_wec_f1a1_best.pt
+  f1b_checkpoint: checkpoints/fno2d_wave_f1b_best.pt    # or wno/gno variant
+
+# ── Dataset: Coupled simulation cases ────────────────────────────────────────
+# Source: OceanWave3D + WEC-Sim in sequence (or full coupled solver)
+# Spec 05: 50-100 coupled cases
+dataset_f1c:
+  generator:     oceanwave3d_wecsim_coupled
+  n_samples:     100                 # spec 05: 50–100 cases
+  seed:          45
+  output_path:   data/phase1_coupled_f1c.zarr
+
+  wave_conditions:
+    spectrum_types: [JONSWAP, Pierson-Moskowitz]
+    Hs_m:          [1.0, 3.0]        # spec 05: realistic operational range
+    Tp_s:          [6.0, 12.0]
+    heading_deg:   [0.0, 360.0]
+
+  layouts:
+    - {n_bodies: 1, name: single_wec}
+    - {n_bodies: 2, separation_m: 100.0, name: two_body_array}
+    - {n_bodies: 3, layout: triangle, name: three_body_array}
+
+  domain:
+    size_m:      [2000, 2000]        # spec 05: 2km × 2km benchmark
+    depth_m:     50.0
+    bathymetry:  flat                # Phase 1 — variable bathy in Phase 2
+
+  outputs_per_case:
+    - eta_coupled       # η(x,y,t) with device effects present
+    - u_coupled         # velocity field including radiation
+    - power_per_device  # P_abs(t) per WEC
+    - forces_per_device # F_hydro(t) per WEC
+    - radiation_field   # η_rad(x,y,t) — device contribution only
+
+  # Split by layout family — NOT random (spec 08)
+  split_strategy:  by_layout_family
+  split:           {train: 0.70, val: 0.15, test: 0.15}
+
+# ── Coupling architecture ──────────────────────────────────────────────────────
+# Phase 1: iterative coupling (IterativeCoupledOperator in src/nossomar/coupling/)
+# Phase 2: end-to-end (CoupledPINOOperator) — see spec 05 for full design
+
+coupling:
+  phase1_mode:     iterative         # prototype — multiple F1B calls
+  max_iterations:  5
+  convergence_tol: 0.01              # |η_k - η_{k-1}| threshold
+  radiation_model: analytical        # Phase 1: analytical radiation; Phase 2: learned
+
+  phase2_mode:     end_to_end        # planned — joint gradient flow
+  phase2_status:   planned
+
+# ── Scientific modules coupling order (spec 06) ───────────────────────────────
+# Order is physically prescribed — do not reorder
+module_order:
+  1: wetting_drying         # h_reg ≥ h_min prevents division by zero
+  2: atmospheric_forcing    # wind stress is a boundary condition
+  3: object_interaction     # F1A inside domain — not external
+  4: wave_propagation       # F1B core operator
+  5: post_processing        # wet/dry mask, energy check, output
+
+# ── Loss stack (spec 05 + spec 09) ────────────────────────────────────────────
+loss:
+  supervised:
+    weight: 1.0
+    terms:
+      eta_coupled_mse:  1.0
+      u_coupled_mse:    1.0
+      power_mse:        0.5          # spec 05: α = 0.5
+
+  physics:
+    weight: 0.01                     # weakened initially — strengthened after L_sup converges
+    terms:
+      energy_balance:   true         # ∇·(energy_flux) + P_absorbed = 0 (spec 05)
+      causality:        true         # no output before forcing
+    residuals_module: src/nossomar/physics/residuals_torch.py
+
+  cross_fidelity:
+    weight: 0.05
+    terms:
+      spectral_consistency: true     # wave spectrum behind array must be reduced
+      wake_effect_check:    true     # power drop 5-15% for 2nd WEC in array (spec 05)
+    bridge_module: src/nossomar/physics/multifidelity.py
+
+# ── Validation: 3 benchmarks (spec 05) ────────────────────────────────────────
+validation:
+  benchmarks:
+    - name:   single_wec_flat_bathy
+      domain: 2km x 2km, 50m depth, flat
+      device: RM3-equivalent (r=5m, draft=3.5m)
+      ref:    oceanwave3d_wecsim_sequential
+      targets:
+        power_error_pct: 10.0        # within 10% of coupled reference
+        wake_visible:    true        # wave shadow behind device
+
+    - name:   two_body_array
+      domain: 2km x 2km, 50m depth
+      devices: 2 WECs, 100m separation
+      ref:    oceanwave3d_wecsim_sequential
+      targets:
+        interaction_effect_pct: [5.0, 15.0]  # spec 05: 5-15% power reduction 2nd WEC
+        convergence_iterations:  5            # typical convergence ≤ 5 iterations
+
+    - name:   portuguese_coast_nearshore
+      domain: 5km x 5km, variable bathymetry (GEBCO)
+      devices: 3 WECs, triangle layout
+      ref:    swan_wecsim_ensemble
+      data:   data/open_database/metadata/gebco_grid.html  # metadata only — download required
+      targets:
+        Hs_error_pct:    10.0
+        power_error_pct: 15.0        # relaxed tolerance for real bathy
+
+# ── Computational budget (spec 05) ────────────────────────────────────────────
+compute:
+  iterative_forward_ms: 500         # 5 iterations × 100ms F1B each
+  end_to_end_forward_ms: 100        # Phase 2 target
+  training_hours_phase1: 12         # iterative coupling — no joint training needed
+  training_hours_phase2: 24         # end-to-end joint training
+
+# ── Uncertainty ────────────────────────────────────────────────────────────────
+uncertainty:
+  method:              conformal
+  alpha:               0.05
+  propagate_from_f1a:  true         # compound UQ from both operators
+  propagate_from_f1b:  true
+
+# ── Artifacts ────────────────────────────────────────────────────────────────
+artifacts:
+  coupling_results:    checkpoints/f1c_coupling_validation.json
+  benchmark_plots:     checkpoints/f1c_benchmark_plots/
+  metrics:             checkpoints/f1c_metrics.json
