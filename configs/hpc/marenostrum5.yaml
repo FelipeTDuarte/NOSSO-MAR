@@ -1,0 +1,7 @@
+cluster:         marenostrum5
+n_nodes:         8
+walltime:        "12:00:00"
+account:         "your_bsc_account"
+mixed_precision: true
+checkpoint_dir:  /gpfs/scratch/your_account/nosso_mar/checkpoints
+data_dir:        /gpfs/scratch/your_account/nosso_mar/data
