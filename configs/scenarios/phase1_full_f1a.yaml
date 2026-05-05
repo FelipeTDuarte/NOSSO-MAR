@@ -1,0 +1,145 @@
+# Phase 1A — Wave-Structure Interaction (WSI) Operator — FULL SCOPE
+#
+# Replaces BEM solvers (Capytaine, HAMS, NEMOH) at inference time.
+# Single WEC (F1A1) → Multi-body array (F1A2) → Physics-informed validation.
+#
+# Specs: 03_F1A_WSI_OPERATOR.md, 08_DATASET_PIPELINE.md, 09_TRAINING_LOOP.md
+# Operators: deeponet, physics_deeponet, gno (see src/nossomar/operators/factory.py)
+
+name:    phase1_full_f1a
+phase:   1
+task:    F1A
+status:  active
+
+# ── Dataset: F1A1 — Single WEC ────────────────────────────────────────────────
+# Source: Capytaine BEM sweep with Latin Hypercube Sampling
+# NOT analytic-only: analytic data is Stage A harness only (see training stages)
+dataset_f1a1:
+  generator:     capytaine_lhs
+  n_samples:     1000                 # spec 03: 500–1000 cases
+  seed:          42
+  output_path:   data/phase1_wec_f1a1.zarr
+
+  # Parameter space (LHS over joint distribution)
+  device_params:
+    radius_m:     [3.0, 12.0]         # spec 03: radius range
+    draft_m:      [2.0, 10.0]
+    depth_m:      [30.0, 100.0]
+    bpto_kNsm:    [0.0, 100.0]        # PTO damping
+    mass_kg:      null                 # derived: mass = rho * V_displaced
+
+  wave_conditions:
+    freq_hz:      {start: 0.05, stop: 2.5, count: 100}   # spec 03: 100 bins
+    heading_deg:  {start: 0.0,  stop: 360.0, step: 15.0} # spec 01: ≥15° resolution
+
+  # Augmentation (spec 03)
+  augmentation:
+    freq_scaling_jitter: 0.02         # ±2% frequency jitter
+    param_noise:         0.05         # ±5% parameter noise
+
+  # Split strategy: by device family, NOT random (spec 08)
+  split_strategy:    by_radius_tercile
+  split:             {train: 0.70, val: 0.15, test: 0.15}
+
+  # Cross-validation: 10% cases checked against HAMS (if available)
+  cross_validate_fraction: 0.10
+  cross_validate_solver:   hams
+
+# ── Dataset: F1A2 — Multi-body array ─────────────────────────────────────────
+dataset_f1a2:
+  generator:     capytaine_array_lhs
+  n_samples:     100                  # spec 03: 2-body exploration
+  seed:          43
+  output_path:   data/phase1_wec_f1a2.zarr
+
+  array:
+    n_bodies:          2
+    separation_m:      [5.0, 50.0]    # spec 03: separation range
+    relative_heading:  [0.0, 180.0]   # degrees
+
+  device_params:                      # same ranges as F1A1
+    radius_m:     [3.0, 12.0]
+    draft_m:      [2.0, 10.0]
+    depth_m:      [30.0, 100.0]
+    bpto_kNsm:    [0.0, 100.0]
+
+  split_strategy:    by_separation_tercile
+  split:             {train: 0.70, val: 0.15, test: 0.15}
+
+# ── Open data conditioning (Stage B, spec 09) ────────────────────────────────
+open_data:
+  ndbc_station:    "41009"            # data/open_database/downloads/ndbc/41009.txt
+  coops_station:   "9414290"          # data/open_database/downloads/coops/
+  use_as:          forcing_context    # not training targets — spectral context only
+  catalog:         src/nossomar/data/open_data_catalog.py
+
+# ── Operators ─────────────────────────────────────────────────────────────────
+# Names must match factory.py registry exactly
+operators:
+  primary:    deeponet               # F1A1: mesh-independent, freq-domain query
+  physics:    physics_deeponet       # F1A1: PI-DeepONet variant
+  array:      gno                    # F1A2: multi-body graph structure
+
+# ── Loss stack (spec 03 + spec 09) ───────────────────────────────────────────
+loss:
+  supervised:
+    weight:    1.0
+    terms:     [A_omega, B_omega, Fex_real, Fex_imag]
+    metric:    mse
+
+  physics:
+    weight:    0.1                   # ramped via curriculum (see training stages)
+    terms:
+      damping_nonneg:   true         # B(ω) ≥ 0 always — spec 03: zero violations
+      causality:        true         # frequency-domain causality
+      addedmass_bound:  true         # A(ω) ≤ ρ·g·A_geom
+    residuals_module:  src/nossomar/physics/residuals_torch.py
+
+  cross_fidelity:
+    weight:    0.05
+    terms:
+      power_consistency: true        # P = ∫ RAO² · S(ω) dω must match WEC-Sim
+      response_summary:  true        # peak frequency, bandwidth match
+    bridge_module:  src/nossomar/physics/multifidelity.py
+
+# ── Validation metrics (spec 03) ─────────────────────────────────────────────
+validation:
+  targets:
+    A_rmse_pct:   5.0                # RMSE A(ω) < 5% of A_true
+    B_rmse_pct:   5.0                # RMSE B(ω) < 5%
+    Fex_rmse_pct: 8.0                # RMSE Fex < 8%
+    power_rmse_pct: 10.0             # Power prediction < 10%
+    B_violations: 0                  # zero cases with B < 0
+    inference_ms: 1.0                # < 1 ms per query (real-time capable)
+  generalization_gap_max: 0.20       # train vs val RMSE ratio < 1.20
+
+  benchmarks:
+    - name:   rm3_nrel
+      source: data/open_database/benchmarks/wec_benchmarks.json
+      ref:    wec_sim
+      target_power_error_pct: 10.0
+
+    - name:   cylinder_analytic
+      source: src/nossomar/data/analytic_wec.py
+      ref:    hulme_1982
+      target_A_error_pct: 1.0        # analytic is tightest tolerance
+
+    - name:   hams_crossval
+      source: data/phase1_wec_f1a1.zarr
+      ref:    hams
+      fraction: 0.10
+
+# ── Uncertainty (spec 07) ─────────────────────────────────────────────────────
+uncertainty:
+  method:          conformal          # primary — distribution-free coverage
+  alpha:           0.05              # 95% coverage target
+  ensemble_members: 5                # optional ensemble for comparison
+  extrapolation_flag: true           # flag if params outside training bounds
+  fallback_trigger_uncertainty_pct: 30.0  # solver fallback if UQ > 30% of signal
+
+# ── Artifacts ────────────────────────────────────────────────────────────────
+artifacts:
+  f1a1_checkpoint:  checkpoints/deeponet_wec_f1a1_best.pt
+  f1a2_checkpoint:  checkpoints/gno_wec_f1a2_best.pt
+  metrics:          checkpoints/f1a_metrics.json
+  uncertainty:      checkpoints/f1a_conformal_quantiles.json
