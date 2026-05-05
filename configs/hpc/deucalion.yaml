@@ -1,0 +1,37 @@
+# Deucalion — EuroHPC petascale supercomputer
+# Location: Minho Advanced Computing Centre (MACC), Guimarães, Portugal
+# Host: FCT / FCCN | Managed by: CNCA
+# Access: https://rnca.fccn.pt/en/deucalion/
+#
+# GPU partition: 33 x86 nodes (ATOS Bull Sequana E410)
+#   - 17 nodes: 4x Nvidia A100 40 GB
+#   - 16 nodes: 4x Nvidia A100 80 GB
+#   - 2x AMD EPYC Rome 7742 per node | 512 GB RAM per node
+#   - InfiniBand interconnect (Mellanox QM8790)
+#   - Storage: 10.6 PB DDN EXAScaler parallel filesystem
+#
+# NOTE: For memory-intensive operators (F-FNO large, 3D grids), prefer
+# requesting 80 GB nodes explicitly via --constraint=a100_80gb if available.
+
+cluster:         deucalion
+institution:     "FCT / FCCN — University of Minho, Portugal"
+partition:       gpu
+n_nodes:         4
+gpus_per_node:   4
+gpu_type:        "A100"          # 40 GB (default) or 80 GB — see note above
+walltime:        "12:00:00"
+account:         "your_fct_account"
+mixed_precision: true            # FP16 on A100
+
+scheduler: slurm
+modules_to_load:
+  - cuda/12.1
+  - python/3.11
+  - openmpi/4.1
+
+checkpoint_dir:  /scratch/your_account/nosso_mar/checkpoints
+data_dir:        /scratch/your_account/nosso_mar/data
+output_dir:      /scratch/your_account/nosso_mar/outputs
+
+# EuroHPC access: national (FCT) + transnational (EuroHPC JU calls)
+# Apply at: https://www.eurohpc-ju.europa.eu/access-our-supercomputers
