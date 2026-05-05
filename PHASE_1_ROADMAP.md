@@ -1,4 +1,5 @@
 # Phase 1 — Implementation Roadmap
+
 ## Goal: simulate a WEC farm with trained neural operators
 
 **Status legend**: ✓ Complete · → In progress · ○ Not started · ⚠ Partially done (see notes)
@@ -12,7 +13,7 @@ coupled neural operator surrogates. The deliverable is a runnable WEC farm
 simulation that takes a wave spectrum and layout and returns power per device
 with uncertainty estimates.
 
-```
+```text
 F1A (DeepONet/GNO — WSI)  ↔  F1B (FNO2d/WNO — wave field)
           ↕
      F1C (iterative coupling)
@@ -26,7 +27,7 @@ Expected speedup over classical solvers: **100×–1000×** per evaluation.
 
 ## Task map and dependencies
 
-```
+```text
 T00 (IO Contracts)           ✓
 T01 (Analytic data)          ✓
 T02 (Operator library)       ✓
@@ -61,12 +62,14 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 0
 
 **What was built**:
+
 - `src/nossomar/core/contracts.py` — `WECState`, `WaveField`, `OceanState`
   with coordinate validation, physical bounds checking, JSON persistence
 - `src/nossomar/core/field_schema.py` — `GridDefinition`, `MultiFidelitySample`
 - `tests/test_contracts.py` — 10 test cases
 
 **Verified**:
+
 - ✓ All xarray classes serialize/deserialize to JSON
 - ✓ Coordinate validation passes
 - ✓ Physical bounds checking works (`damping ≥ 0` enforced in `WECState`)
@@ -78,6 +81,7 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 1, Week 1
 
 **What was built**:
+
 - `src/nossomar/data/analytic_wec.py` — closed-form hydrodynamic responses
   (Hulme 1982 cylinder), Airy wave diagnostics, `BRANCH_DIM = 10`,
   `TRUNK_DIM = 7`, `make_frequency_grid()`
@@ -87,11 +91,13 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 - `tests/test_wec_dataset.py` — shape tests, regression arrays
 
 **Verified**:
+
 - ✓ 1000+ analytic cases generated in <1 second
 - ✓ Dataset split: 70/15/15 train/val/test
 - ✓ RMSE vs. Hulme 1982 < 1%
 
 **Current dataset**: `data/phase1_wec_database.json`
+
 - 48 analytic samples (34 train / 7 val / 7 test)
 - This is intentionally small — the real dataset is built in T08 (Capytaine)
 
@@ -102,6 +108,7 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 1, Week 1
 
 **What was built** (all in `src/nossomar/operators/`):
+
 - `deeponet/deeponet.py` — full PyTorch DeepONet (branch + trunk MLP)
 - `deeponet/physics_deeponet.py` — PI-DeepONet with pluggable PDE residual
 - `deeponet/pod_deeponet.py` — POD-DeepONet variant
@@ -117,6 +124,7 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 - `factory.py` — `build_operator(name, cfg)` registry
 
 **Verified**:
+
 - ✓ All operators instantiate and run forward pass (smoke sweep)
 - ✓ `factory.py` covers: `fno2d`, `fno3d`, `ffno2d`, `geo_fno`, `wno`,
   `gno`, `deeponet`, `physics_deeponet`, `rino2d`
@@ -128,6 +136,7 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 1, Week 2
 
 **What was built**:
+
 - `src/nossomar/physics/residuals_torch.py`:
   - `navier_stokes_2d_residual`
   - `navier_stokes_3d_residual`
@@ -146,6 +155,7 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 - `tests/test_multifidelity.py`
 
 **Verified**:
+
 - ✓ All residual functions return finite tensors on valid inputs
 - ✓ Multifidelity bridges tested
 
@@ -156,12 +166,14 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 1, Week 2
 
 **What was built**:
+
 - `src/nossomar/data/open_data_catalog.py`
 - `src/nossomar/data/open_data_fetchers.py`
 - `src/nossomar/data/database_builder.py`
 - `scripts/build_open_database.py`
 
 **Data downloaded** to `data/open_database/downloads/`:
+
 - `ndbc/41009.txt` — offshore wave buoy (Hs, Tp, direction time series)
 - `coops/9414290_water_level.json` — SF Bay water level
 - `coops/9414290_wind.json` — wind
@@ -169,12 +181,14 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 - `oisst/oisst-avhrr-v02r01.20250428.nc` — satellite SST
 
 **Metadata only** (download required before use):
+
 - `metadata/gebco_grid.html` — GEBCO bathymetry
 - `metadata/emodnet_physics.html` — EMODnet physics
 - `metadata/rm3_geometry.html` — RM3 WEC geometry
 - `metadata/wecsim_rm3_tutorial.html` — WEC-Sim RM3 reference
 
 **Verified**:
+
 - ✓ `tests/test_open_data_catalog.py` passes
 - ✓ NDBC and COOPS data parseable
 
@@ -185,12 +199,14 @@ T15 (WEC farm simulation)    ○  depends on: T13, T14
 **Completed**: Phase 1, Week 2
 
 **What was built**:
+
 - `src/nossomar/experiments/architecture_sweep.py` — `run_smoke_sweep()`
 - `scripts/smoke_operator_sweep.py`
 - `tests/test_operator_factory.py`
 - `configs/operator_sweep.yaml`
 
 **Verified**:
+
 - ✓ All 5 operator families pass smoke sweep: `fno2d`, `wno`, `gno`,
   `deeponet`, `rino2d`
 - ✓ Forward pass shapes correct for each family
@@ -210,6 +226,7 @@ The checkpoint `deeponet_wec_local.json` is a weight matrix (70×4), not a
 PyTorch state dict.
 
 **What needs to change**:
+
 - **Modify** `src/nossomar/training/train_wec.py`:
   - Replace `DeepONetWECRegressor` with `build_operator("deeponet", cfg)`
   - Add PyTorch training loop: `DataLoader`, `optimizer.step()`, `scheduler.step()`
@@ -223,6 +240,7 @@ PyTorch state dict.
   - Add `--stage` and `--resume-from` CLI arguments
 
 **Done when**:
+
 ```bash
 python scripts/train_phase1.py --config configs/training/deeponet_wec_full.yaml --stage a
 # → checkpoints/stage_a_deeponet.pt exists (PyTorch state dict)
@@ -242,6 +260,7 @@ pytest tests/test_deeponet_wec.py  # still passes
 connects it to the training loop.
 
 **Files to create**:
+
 - `src/nossomar/loss/__init__.py`
 - `src/nossomar/loss/physics_losses.py`:
   - `damping_nonneg_loss(B_pred)` — soft relu penalty for B < 0
@@ -252,6 +271,7 @@ connects it to the training loop.
 - `tests/test_physics_losses.py`
 
 **Done when**:
+
 ```bash
 pytest tests/test_physics_losses.py
 # B < 0 → positive loss, B ≥ 0 → zero penalty
@@ -270,6 +290,7 @@ model generalises to synthetic responses only. Capytaine provides real BEM
 coefficients for arbitrary geometries.
 
 **Files to create**:
+
 - `src/nossomar/data/capytaine_runner.py`:
   - `CapytaineRunner` class
   - `run_single(radius, draft, depth, freq_array)` → `WECState`
@@ -281,6 +302,7 @@ coefficients for arbitrary geometries.
 - `tests/test_capytaine_runner.py` — 3 cases, B ≥ 0, A > 0 at mid-frequency
 
 **Done when**:
+
 ```bash
 pip install capytaine
 python scripts/generate_f1a_dataset.py \
@@ -299,16 +321,18 @@ pytest tests/test_capytaine_runner.py
 **Config**: `configs/training/deeponet_wec_full.yaml`
 
 | Stage | Data | Physics weight | Target | Time |
-|-------|------|---------------|--------|------|
+| ------- | ------ | --------------- | -------- | ------ |
 | A — Analytic harness | `analytic_wec.py` | 0.0 | Loss finite, B_violations = 0 | ~10 min |
 | B — Capytaine conditioning | `phase1_wec_f1a1.zarr` | 0.05 | val RMSE < 7% | ~2h |
 | C — Physics-informed | `phase1_wec_f1a1.zarr` | 0.1 (ramped) | val RMSE < 5%, B_violations = 0 | ~6h |
 | D — HAMS calibration | 10% of F1A1 cross-validated | 0.2 | power error < 10% on RM3 | ~1h |
 
 **Files to create**:
+
 - `scripts/validate_f1a.py` — runs all benchmarks, writes `checkpoints/f1a_metrics.json`
 
 **Done when**:
+
 ```bash
 python scripts/train_phase1.py --config configs/training/deeponet_wec_full.yaml --stage all
 python scripts/validate_f1a.py
@@ -330,7 +354,7 @@ python scripts/validate_f1a.py
 **Solver options** — pick one:
 
 | Path | Solver | Status | Notes |
-|------|--------|--------|-------|
+| ------ | -------- | -------- | ------- |
 | A | OceanWave3D | Commercial license required | Highest fidelity |
 | B | SWASH | Open-source, setup required | Good fidelity |
 | C | Synthetic FD | No external dependency | Use `shallow_water_residual` from T03 |
@@ -340,6 +364,7 @@ Regenerate with OceanWave3D or SWASH if available later — the training
 pipeline (T11) does not change.
 
 **Files to create**:
+
 - `src/nossomar/data/{solver}_runner.py` (whichever path)
 - `src/nossomar/data/wave_dataset.py` — `WaveFieldDataset` with Zarr I/O,
   PyTorch Dataset API, bridge calls to `multifidelity.py`
@@ -347,6 +372,7 @@ pipeline (T11) does not change.
 - `tests/test_wave_dataset.py`
 
 **Done when**:
+
 ```bash
 python scripts/generate_f1b_dataset.py \
   --config configs/scenarios/phase1_full_f1b.yaml \
@@ -362,6 +388,7 @@ pytest tests/test_wave_dataset.py
 ### T11 — Train F1B — Wave Field Operator ○
 
 **Architecture selection** (run before full training):
+
 ```bash
 python scripts/smoke_operator_sweep.py  # must pass
 # Train FNO2d and WNO on 20% of data — pick lower validation eta RMSE
@@ -370,6 +397,7 @@ python scripts/smoke_operator_sweep.py  # must pass
 **Config**: `configs/training/f1b_operators_full.yaml`
 
 **Files to create**:
+
 - `src/nossomar/training/train_wave.py` — training loop for F1B: handles
   3D tensor inputs (batch, channels, x, y), full loss stack
 - `scripts/train_f1b.py` — CLI entry point
@@ -377,6 +405,7 @@ python scripts/smoke_operator_sweep.py  # must pass
 - `tests/test_wave_operator.py` — forward pass shape, energy balance, causality
 
 **Done when**:
+
 ```bash
 python scripts/train_f1b.py --config configs/training/f1b_operators_full.yaml --stage all
 python scripts/validate_f1b.py
@@ -397,6 +426,7 @@ python scripts/validate_f1b.py
 interactions. The GNO (T02) is implemented but not trained on WEC data.
 
 **Files to create**:
+
 - **Modify** `src/nossomar/data/capytaine_runner.py` — add `run_array_lhs_sweep()`
 - `scripts/generate_f1a2_dataset.py` — 100 2-body cases
 - `src/nossomar/training/train_gno_wec.py` — GNO training loop with graph
@@ -405,6 +435,7 @@ interactions. The GNO (T02) is implemented but not trained on WEC data.
 - `tests/test_gno_wec.py` — 2-body forward pass, interaction effect in [5%, 15%]
 
 **Done when**:
+
 ```bash
 python scripts/generate_f1a2_dataset.py --n-samples 100 --output data/phase1_wec_f1a2.zarr
 python scripts/train_f1a2.py
@@ -420,6 +451,7 @@ pytest tests/test_gno_wec.py
 ### T13 — Coupling Layer (F1C — iterative F1B ↔ F1A) ○
 
 **Coupling loop per iteration**:
+
 1. F1B predicts η(x,y,t) from incident spectrum
 2. Extract local wave conditions at each WEC position
 3. F1A predicts device response and absorbed power
@@ -428,6 +460,7 @@ pytest tests/test_gno_wec.py
 6. Repeat up to `max_iter = 5`
 
 **Files to create**:
+
 - `src/nossomar/coupling/__init__.py`
 - `src/nossomar/coupling/iterative_coupler.py`:
   - `IterativeCoupler(f1b_operator, f1a_operator, radiation_model, config)`
@@ -440,6 +473,7 @@ pytest tests/test_gno_wec.py
 - `tests/test_coupling.py`
 
 **Done when**:
+
 ```bash
 python scripts/validate_coupling.py --config configs/scenarios/phase1_full_f1c.yaml
 pytest tests/test_coupling.py
@@ -457,6 +491,7 @@ pytest tests/test_coupling.py
 ### T14 — Conformal Uncertainty Quantification ○
 
 **Files to create**:
+
 - `src/nossomar/uncertainty/__init__.py`
 - `src/nossomar/uncertainty/conformal.py`:
   - `ConformalPredictor(model, calibration_dataset, alpha=0.05)`
@@ -469,6 +504,7 @@ pytest tests/test_coupling.py
 - `tests/test_uncertainty.py`
 
 **Done when**:
+
 ```bash
 python scripts/calibrate_uncertainty.py \
   --checkpoint checkpoints/deeponet_wec_f1a1_best.pt
@@ -488,6 +524,7 @@ pytest tests/test_uncertainty.py
 device, total farm power, wave field, and uncertainty intervals.
 
 **Files to create**:
+
 - `src/nossomar/farm/__init__.py`
 - `src/nossomar/farm/wec_farm.py`:
   - `WECFarm(layout, device_params, f1b_checkpoint, f1a_checkpoint, f1a2_checkpoint)`
@@ -500,6 +537,7 @@ device, total farm power, wave field, and uncertainty intervals.
 - `tests/test_wec_farm.py`
 
 **Done when**:
+
 ```bash
 python scripts/simulate_wec_farm.py \
   --layout configs/farm_layouts/peniche_3wec.yaml \
@@ -517,6 +555,7 @@ pytest tests/test_wec_farm.py
 ```
 
 **Usage example**:
+
 ```python
 from nossomar.farm.wec_farm import WECFarm
 
@@ -539,7 +578,7 @@ print(result.total_power)       # sum kW
 ## Progress summary
 
 | Task | Status | Key artifact |
-|------|--------|-------------|
+| ------ | -------- | ------------- |
 | T00 IO Contracts | ✓ | `core/contracts.py`, `test_contracts.py` |
 | T01 Analytic data | ✓ | `analytic_wec.py`, 48-sample dataset |
 | T02 Operator library | ✓ | FNO, WNO, GNO, DeepONet, RINO all implemented |
@@ -564,6 +603,7 @@ print(result.total_power)       # sum kW
 ## Handoff to Phase 2
 
 At Phase 1 completion, Phase 2 receives:
+
 - Trained F1A (DeepONet + GNO) and F1B (FNO2d or WNO) operators
 - Iterative coupling layer (F1C) — ready for end-to-end joint training
 - WEC farm simulation with conformal UQ
