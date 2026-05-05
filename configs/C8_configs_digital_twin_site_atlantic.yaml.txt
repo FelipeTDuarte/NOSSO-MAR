@@ -1,0 +1,17 @@
+# Test site: Peniche, Portugal (Phase 2 — planned)
+site_name:          "Atlantic Test Site — Peniche, Portugal"
+grid_shape:         [256, 256]
+grid_resolution_m:  25.0
+assimilation_cycle: 600.0      # seconds
+forecast_horizon:   3600.0     # seconds
+
+sensors:
+  - {id: buoy_01, type: wave_buoy, position: [5000, 6000]}
+  - {id: buoy_02, type: wave_buoy, position: [7000, 8000]}
+
+storage_backend: zarr
+storage_path:    data/twin_states/atlantic
+
+enkf:
+  n_ensemble: 100
+  inflation:  1.05

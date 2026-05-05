@@ -1,0 +1,17 @@
+# Test site: North Sea (Phase 2 — planned)
+site_name:          "North Sea Offshore Wind + Wave Site"
+grid_shape:         [512, 512]
+grid_resolution_m:  50.0
+assimilation_cycle: 900.0      # seconds
+forecast_horizon:   7200.0     # seconds
+
+sensors:
+  - {id: platform_01, type: wave_buoy, position: [10000, 12000]}
+  - {id: platform_02, type: wave_buoy, position: [15000, 18000]}
+
+storage_backend: zarr
+storage_path:    data/twin_states/north_sea
+
+enkf:
+  n_ensemble: 200
+  inflation:  1.08
