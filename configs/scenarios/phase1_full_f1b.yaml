@@ -1,0 +1,163 @@
+# Phase 1B — Wave Field Operator — FULL SCOPE
+#
+# Learns η(x,y,t), u, v from forcing + bathymetry across multiple fidelities.
+# Operator family comparison: FNO2d, WNO, GNO (irregular bathy), RINO (resolution)
+#
+# Specs: 04_F1B_WAVE_FIELD_OPERATOR.md, 08_DATASET_PIPELINE.md, 09_TRAINING_LOOP.md, 10_MULTIFIDELITY_ALIGNMENT.md
+# Operators: fno2d, ffno2d, wno, gno, rino2d (see src/nossomar/operators/factory.py)
+ 
+name:    phase1_full_f1b
+phase:   1
+task:    F1B
+status:  active
+ 
+# ── Dataset: Phase-resolved wave field ───────────────────────────────────────
+# Source: OceanWave3D or SWASH (phase-resolved solver)
+# Rule: never compare raw solver output to spectral products without bridge
+#       (spec 10, Rule 1 — use multifidelity.py bridges)
+dataset_f1b:
+  generator:     oceanwave3d_lhs     # or swash_lhs — whichever is available
+  n_samples:     500                 # spec 04: 500 training cases
+  seed:          44
+  output_path:   data/phase1_wave_f1b.zarr
+ 
+  domain:
+    grid_shape:       [128, 128]     # x, y points
+    resolution_m:     25.0           # grid resolution
+    depth_range_m:    [10.0, 100.0]  # flat to mildly sloped bathymetry
+    bathymetry_types: [flat, slope, shoal, nearshore_bar]
+ 
+  forcing:
+    spectrum_types:   [JONSWAP, Pierson-Moskowitz, bimodal]
+    Hs_m:            [0.5, 5.0]
+    Tp_s:            [4.0, 18.0]
+    heading_deg:     [0.0, 360.0]
+    wind_forcing:    era5             # from open_data catalog — 20-30% of cases
+ 
+  outputs:
+    - eta            # surface elevation η(x, y, t)  [m]
+    - u              # depth-averaged velocity u [m/s]
+    - v              # depth-averaged velocity v [m/s]
+    - spectrum_1d    # derived via phase_series_to_spectrum (multifidelity.py)
+    - bulk_stats     # Hs, Tp, Te derived via bulk_wave_statistics (multifidelity.py)
+ 
+  # Split by bathymetry type — NOT random (spec 08)
+  split_strategy:    by_bathymetry_family
+  split:             {train: 0.70, val: 0.15, test: 0.15}
+ 
+# ── Open data as boundary conditions ─────────────────────────────────────────
+# Real observations constrain open-boundary forcing — they are NOT training targets
+open_data_bc:
+  ndbc_station:   "41009"            # offshore spectral forcing
+  coops_station:  "9414290"          # coastal water level
+  gebco:          data/open_database/metadata/gebco_grid.html  # metadata only — download required
+  emodnet:        data/open_database/metadata/emodnet_physics.html  # metadata only — download required
+ 
+# ── L4 CFD bridge calibration (sparse, Stage D) ──────────────────────────────
+# High-fidelity reference for 10-20 selected cases (spec 04, spec 09 Stage D)
+# CFD -> phase-resolved bridge via cfd_snapshot_to_phase_fields (multifidelity.py)
+cfd_bridge:
+  n_cfd_cases:    15
+  bridge_fn:      cfd_snapshot_to_phase_fields   # src/nossomar/physics/multifidelity.py
+  use_for:        stage_d_calibration_only        # NOT primary training target
+ 
+# ── Operators ─────────────────────────────────────────────────────────────────
+# All names match factory.py registry
+# Spec 04 operator selection logic is encoded in the comments:
+operators:
+  fno2d:          # regular grid, rectangular domain, speed-critical cases
+    modes_x: 12
+    modes_y: 12
+    width:   64
+    n_layers: 4
+ 
+  ffno2d:         # factorized FNO — better for high-res or anisotropic domains
+    modes_x: 24
+    modes_y: 24
+    width:   128
+    n_layers: 6
+ 
+  wno:            # multi-scale spatial structure, shoaling, localized gradients
+    levels:  3
+    width:   64
+    n_layers: 4
+ 
+  gno:            # irregular geometry, coastlines, device arrays embedded in field
+    node_in_dim:  6
+    node_out_dim: 3
+    hidden:       64
+    n_layers:     4
+ 
+  rino2d:         # resolution transfer, query-based decoding — bridge baseline
+    in_channels:  5
+    out_channels: 3
+ 
+# Architecture sweep must pass before long runs (spec 09)
+# Run: python scripts/smoke_operator_sweep.py
+sweep_config:  configs/operator_sweep.yaml
+ 
+# ── Loss stack (spec 04 + spec 09 + spec 10) ─────────────────────────────────
+loss:
+  supervised:
+    weight: 1.0
+    terms:  [eta_mse, u_mse, v_mse]
+ 
+  physics:
+    weight: 0.1
+    terms:
+      shallow_water_residual:   true   # residuals_torch.py: shallow_water_residual
+      wave_action_residual:     true   # residuals_torch.py: wave_action_balance_residual
+      energy_conservation:      true   # no energy before forcing — causality
+      boundary_compliance:      true   # open BC and wall BC checked
+    residuals_module: src/nossomar/physics/residuals_torch.py
+ 
+  cross_fidelity:
+    weight: 0.05
+    terms:
+      spectral_consistency: true       # η(t) → S(f) must match L1 spectral product
+      Hs_Tp_consistency:    true       # bulk stats from field match open-data observations
+      cfd_downgrade:        true       # Stage D only: CFD → L2 consistency
+    bridge_module: src/nossomar/physics/multifidelity.py
+ 
+# ── Validation metrics (spec 04) ─────────────────────────────────────────────
+validation:
+  field_view:
+    eta_rmse_m:          0.10         # absolute RMSE < 10 cm
+    eta_rmse_rel_pct:    10.0         # relative < 10% of signal
+ 
+  spectral_view:
+    Hs_error_pct:        10.0         # Hs match within 10%
+    Tp_error_pct:        10.0         # Tp match within 10%
+    energy_balance_pct:  5.0          # energy drift < 5%
+ 
+  physics_view:
+    dispersion_error_pct: 5.0         # phase speed c = ω/k within 5%
+    causality_violations: 0           # no energy before forcing
+ 
+  benchmarks:
+    - name:    flat_bottom_linear
+      ref:     airy_wave_theory
+      target_eta_error_pct: 2.0       # tight tolerance vs. known analytic
+ 
+    - name:    shoaling_slope
+      ref:     green_law
+      target_Hs_error_pct: 5.0
+ 
+    - name:    ndbc_41009_hindcast
+      ref:     data/open_database/downloads/ndbc/41009.txt
+      use:     spectral_view_only      # observations → spectral comparison only
+ 
+# ── Uncertainty (spec 07) ─────────────────────────────────────────────────────
+uncertainty:
+  method:              conformal
+  alpha:               0.05
+  extrapolation_flag:  true
+  fallback_trigger_uncertainty_pct: 30.0
+ 
+# ── Artifacts ────────────────────────────────────────────────────────────────
+artifacts:
+  fno2d_checkpoint:  checkpoints/fno2d_wave_f1b_best.pt
+  wno_checkpoint:    checkpoints/wno_wave_f1b_best.pt
+  gno_checkpoint:    checkpoints/gno_wave_f1b_best.pt
+  sweep_results:     checkpoints/f1b_operator_sweep_results.json
+  metrics:           checkpoints/f1b_metrics.json
