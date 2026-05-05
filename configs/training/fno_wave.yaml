@@ -1,0 +1,12 @@
+operator:   fno2d
+modes:      [12, 12]
+width:      64
+n_layers:   4
+
+training:
+  epochs:     300
+  batch_size: 16
+  lr:         1.0e-3
+  scheduler:  step
+  step_size:  100
+  gamma:      0.5
