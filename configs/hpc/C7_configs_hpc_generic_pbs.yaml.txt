@@ -1,0 +1,75 @@
+# Generic PBS / OpenPBS config — NOSSO-MAR
+# Use this as a starting point for any PBS-based HPC cluster.
+# Covers: OpenPBS (open-source), PBS Pro (Altair commercial), Torque.
+#
+# PBS/OpenPBS is used by: some national labs, universities with older setups,
+# and some EuroHPC-adjacent clusters (~32% of HPC sites globally).
+#
+# How to use:
+#   1. Copy this file: cp generic_pbs.yaml my_cluster.yaml
+#   2. Fill in every field marked with YOUR_*
+#   3. Verify queue name with:    qstat -Q
+#   4. Verify project/account:    qstat -u $USER or check cluster docs
+#   5. Test with a short job before full training runs
+#
+# NOTE: If your cluster runs SLURM, use generic_slurm.yaml instead.
+# SLURM is more common for GPU workloads. Check with: which sbatch || which qsub
+
+cluster:         YOUR_CLUSTER_NAME
+institution:     YOUR_INSTITUTION
+scheduler:       pbs                    # options: pbs, openpbs, pbspro, torque
+
+# ── Queue ────────────────────────────────────────────────────────────────────
+# Find available queues with: qstat -Q
+# GPU queues are commonly named: gpu, gpu_shared, gpuq, gpu_large
+queue:           YOUR_GPU_QUEUE        # e.g. "gpu", "gpuq", "gpu_large"
+account:         YOUR_PROJECT_CODE     # -P or -A flag in PBS — check cluster docs
+
+# ── Resources ────────────────────────────────────────────────────────────────
+n_nodes:         1
+gpus_per_node:   4                     # check with: pbsnodes -a | grep gpu
+walltime:        "04:00:00"            # HH:MM:SS
+
+# ── GPU type ─────────────────────────────────────────────────────────────────
+# Check available GPU types with: pbsnodes -a | grep "resources_available.gpu"
+gpu_type:        YOUR_GPU_TYPE         # e.g. A100, V100, RTX3090
+
+# ── Mixed precision ──────────────────────────────────────────────────────────
+mixed_precision: true
+
+# ── Environment modules ──────────────────────────────────────────────────────
+modules_to_load:
+  - YOUR_CUDA_MODULE
+  - YOUR_PYTHON_MODULE
+  - YOUR_MPI_MODULE
+
+# ── Storage paths ────────────────────────────────────────────────────────────
+checkpoint_dir:  /scratch/YOUR_ACCOUNT/nosso_mar/checkpoints
+data_dir:        /scratch/YOUR_ACCOUNT/nosso_mar/data
+output_dir:      /scratch/YOUR_ACCOUNT/nosso_mar/outputs
+
+# ── PBS vs SLURM directive translation ───────────────────────────────────────
+# For reference when writing job scripts manually:
+#
+# SLURM directive          →  PBS/OpenPBS equivalent
+# ----------------------------------------------------------
+# #SBATCH --nodes=N        →  #PBS -l select=N:ngpus=4
+# #SBATCH --time=HH:MM:SS  →  #PBS -l walltime=HH:MM:SS
+# #SBATCH --account=X      →  #PBS -P X   (or -A X)
+# #SBATCH --partition=X    →  #PBS -q X
+# #SBATCH --job-name=X     →  #PBS -N X
+# #SBATCH --output=X       →  #PBS -o X
+# #SBATCH --error=X        →  #PBS -e X
+# $SLURM_NODELIST          →  $PBS_NODEFILE  (file, not list)
+# $SLURM_NTASKS            →  $PBS_NP
+# squeue -u $USER          →  qstat -u $USER
+# scancel JOB_ID           →  qdel JOB_ID
+# scontrol show job JOB_ID →  qstat -f JOB_ID
+
+# ── PBS quick reference ──────────────────────────────────────────────────────
+# Submit job:      qsub my_job.sh
+# Check queue:     qstat -u $USER
+# Cancel job:      qdel JOB_ID
+# Job details:     qstat -f JOB_ID
+# Available nodes: pbsnodes -a
+# Available queues: qstat -Q
