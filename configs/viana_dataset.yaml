@@ -1,0 +1,10 @@
+bbox_km: 5
+center:
+  lat: 41.695
+  lon: -8.833
+dataset_output: data/datasets/viana_50.json
+name: viana_do_castelo
+open_database_root: data/open_database/viana
+time_range:
+  end: '2023-12-31'
+  start: '2018-01-01'

@@ -1,4 +1,4 @@
-Push your local NOSSO-MAR repository to GitHub
+# Push your local NOSSO-MAR repository to GitHub
 
 Option A — Run the provided PowerShell script (recommended on Windows):
 
@@ -23,7 +23,8 @@ git push -u origin main
 ```
 
 Security notes:
+
 - Embedding PAT in remote URL is convenient but leaves it in your shell history; prefer using a credential helper (Windows Credential Manager) or GitHub CLI `gh auth login`.
-- If you prefer not to expose the token, run the manual commands and enter credentials interactively, or use `gh repo create <USER>/NOSSO-MAR --public` then `git push`.
+- If you prefer not to expose the token, run the manual commands and enter credentials interactively, or use `gh repo create <USER>/NOSSO-MAR --private` then `git push`.
 
 If you want, I can attempt to push from this environment provided you paste the PAT here (not recommended). Otherwise run the script locally and tell me the outcome; I can help fix any errors.

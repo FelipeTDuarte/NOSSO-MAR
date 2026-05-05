@@ -1,0 +1,589 @@
+{
+  "built_at_utc": "2026-04-29T22:14:32.191386+00:00",
+  "root_dir": "D:\\Projects\\NOSSO-MAR\\data\\open_database\\viana",
+  "catalog_entries": [
+    {
+      "source_id": "ndbc_stdmet",
+      "title": "NOAA National Data Buoy Center realtime standard meteorological data",
+      "category": "waves_wind",
+      "provider": "NOAA NDBC",
+      "access_url": "https://www.ndbc.noaa.gov/faq/realtime.shtml",
+      "data_url": "https://www.ndbc.noaa.gov/data/realtime2/{station_id}.txt",
+      "format": "text",
+      "license": "U.S. Government data",
+      "access_mode": "direct_download",
+      "variables": [
+        "wave_height",
+        "dominant_period",
+        "average_period",
+        "wind_speed",
+        "wind_direction",
+        "air_temperature",
+        "water_temperature",
+        "pressure"
+      ],
+      "spatial_scope": "Station-based global buoy network",
+      "temporal_scope": "Realtime and archive",
+      "notes": "Single-station text feeds are lightweight enough for automated bootstrap downloads.",
+      "tags": [
+        "waves",
+        "wind",
+        "metocean",
+        "observations"
+      ]
+    },
+    {
+      "source_id": "noaa_coops_water_level",
+      "title": "NOAA CO-OPS observations and predictions API",
+      "category": "tides_currents",
+      "provider": "NOAA CO-OPS",
+      "access_url": "https://api.tidesandcurrents.noaa.gov/api/uat/",
+      "data_url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+      "format": "json",
+      "license": "U.S. Government data",
+      "access_mode": "api",
+      "variables": [
+        "water_level",
+        "wind",
+        "water_temperature",
+        "air_temperature",
+        "currents"
+      ],
+      "spatial_scope": "Station-based U.S. coastal network",
+      "temporal_scope": "Realtime, historical and predictions",
+      "notes": "Supports water levels, currents and meteorological products via a single query API.",
+      "tags": [
+        "tides",
+        "currents",
+        "water_level",
+        "wind",
+        "temperature"
+      ]
+    },
+    {
+      "source_id": "oisst_v2_1",
+      "title": "NOAA Optimum Interpolation Sea Surface Temperature v2.1",
+      "category": "temperature",
+      "provider": "NOAA NCEI",
+      "access_url": "https://www.ncei.noaa.gov/products/optimum-interpolation-sst",
+      "data_url": "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/{yyyymm}/oisst-avhrr-v02r01.{yyyymmdd}.nc",
+      "format": "netcdf4",
+      "license": "NOAA open data",
+      "access_mode": "direct_download",
+      "variables": [
+        "sst",
+        "anom",
+        "ice"
+      ],
+      "spatial_scope": "Global 0.25 degree grid",
+      "temporal_scope": "1981-present daily",
+      "notes": "Daily gridded SST useful for boundary conditions and climatological context.",
+      "tags": [
+        "temperature",
+        "sst",
+        "global_grid"
+      ]
+    },
+    {
+      "source_id": "gebco_grid",
+      "title": "GEBCO global gridded bathymetry",
+      "category": "bathymetry",
+      "provider": "GEBCO",
+      "access_url": "https://www.gebco.net/data-products/gridded-bathymetry-data",
+      "data_url": null,
+      "format": "netcdf/geotiff/ascii",
+      "license": "GEBCO terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "bathymetry",
+        "topography"
+      ],
+      "spatial_scope": "Global 15 arc-second grid",
+      "temporal_scope": "Periodic releases",
+      "notes": "Primary global bathymetry source for domain extraction and coarse morphology.",
+      "tags": [
+        "bathymetry",
+        "seabed",
+        "terrain"
+      ]
+    },
+    {
+      "source_id": "emodnet_physics",
+      "title": "EMODnet Physics portal",
+      "category": "ocean_physics",
+      "provider": "EMODnet",
+      "access_url": "https://emodnet.ec.europa.eu/en/physics",
+      "data_url": null,
+      "format": "portal/catalogue",
+      "license": "Free of charge and no restrictions per portal statements",
+      "access_mode": "metadata_only",
+      "variables": [
+        "temperature",
+        "salinity",
+        "currents",
+        "sea_level",
+        "wave_height",
+        "wave_period",
+        "wind_speed",
+        "wind_direction"
+      ],
+      "spatial_scope": "European seas and connected basins",
+      "temporal_scope": "Operational and historical in-situ time series",
+      "notes": "High-value European aggregation layer for Portuguese waters and offshore renewables.",
+      "tags": [
+        "europe",
+        "currents",
+        "waves",
+        "wind",
+        "sea_level"
+      ]
+    },
+    {
+      "source_id": "emodnet_geology",
+      "title": "EMODnet Geology portal",
+      "category": "geology",
+      "provider": "EMODnet",
+      "access_url": "https://emodnet.ec.europa.eu/en/geology-2",
+      "data_url": null,
+      "format": "portal/catalogue",
+      "license": "Free access via EMODnet portal",
+      "access_mode": "metadata_only",
+      "variables": [
+        "seabed_substrate",
+        "sedimentation_rate",
+        "seafloor_geology",
+        "coastline_behaviour",
+        "geological_events"
+      ],
+      "spatial_scope": "European seas and Caribbean coverage in recent releases",
+      "temporal_scope": "Periodic harmonised releases",
+      "notes": "Relevant for granulometry, geology and morphodynamics layers.",
+      "tags": [
+        "geology",
+        "granulometry",
+        "substrate",
+        "morphology"
+      ]
+    },
+    {
+      "source_id": "newa_atlas",
+      "title": "New European Wind Atlas",
+      "category": "wind_resource",
+      "provider": "NEWA consortium",
+      "access_url": "https://www.neweuropeanwindatlas.eu/mission",
+      "data_url": null,
+      "format": "web portal and API-backed maps",
+      "license": "Freely available atlas data",
+      "access_mode": "metadata_only",
+      "variables": [
+        "wind_speed",
+        "wind_direction",
+        "wind_resource_statistics"
+      ],
+      "spatial_scope": "Europe plus 100 km offshore, Baltic and North Sea",
+      "temporal_scope": "Long-term atlas with mesoscale and microscale products",
+      "notes": "Useful for offshore wind forcing priors and joint wave-wind scenarios.",
+      "tags": [
+        "wind",
+        "atlas",
+        "europe",
+        "offshore"
+      ]
+    },
+    {
+      "source_id": "rm3_geometry",
+      "title": "Reference Model 3 full-scale geometry",
+      "category": "wec_benchmarks",
+      "provider": "OEDI / MHKDR",
+      "access_url": "https://data.openei.org/submissions/8009",
+      "data_url": null,
+      "format": "dataset landing page",
+      "license": "Repository-specific open dataset terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "geometry",
+        "mass_properties",
+        "reference_site"
+      ],
+      "spatial_scope": "Device benchmark",
+      "temporal_scope": "Static benchmark description",
+      "notes": "Canonical open two-body point absorber benchmark for WEC studies.",
+      "tags": [
+        "wec",
+        "rm3",
+        "point_absorber",
+        "benchmark"
+      ]
+    },
+    {
+      "source_id": "mbari_wec_2021",
+      "title": "MBARI WEC 2021 deployment",
+      "category": "wec_benchmarks",
+      "provider": "MHKDR",
+      "access_url": "https://mhkdr.openei.org/submissions/381",
+      "data_url": null,
+      "format": "dataset landing page",
+      "license": "Repository-specific open dataset terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "wec_power",
+        "spotter_wave_data",
+        "wind",
+        "temperature"
+      ],
+      "spatial_scope": "Monterey Bay deployment",
+      "temporal_scope": "2021 deployment campaign",
+      "notes": "Field dataset coupling WEC response with nearby buoy observations.",
+      "tags": [
+        "wec",
+        "field_data",
+        "mbari",
+        "spotter_buoy"
+      ]
+    },
+    {
+      "source_id": "aquaharmonics_tank_test",
+      "title": "AquaHarmonics 1:20 scale tank test data",
+      "category": "wec_benchmarks",
+      "provider": "OEDI / MHKDR",
+      "access_url": "https://data.openei.org/submissions/7966",
+      "data_url": null,
+      "format": "dataset landing page",
+      "license": "Repository-specific open dataset terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "tank_test_timeseries",
+        "phase_control",
+        "lab_measurements"
+      ],
+      "spatial_scope": "Wave tank benchmark",
+      "temporal_scope": "2018 lab campaigns",
+      "notes": "Useful for controlled validation of WEC control and identification workflows.",
+      "tags": [
+        "wec",
+        "tank_test",
+        "aquaharmonics",
+        "control"
+      ]
+    },
+    {
+      "source_id": "lupa_wecsim_moordyn",
+      "title": "Laboratory Upgrade Point Absorber WEC-Sim model with MoorDyn",
+      "category": "wec_benchmarks",
+      "provider": "MHKDR",
+      "access_url": "https://mhkdr.openei.org/submissions/572",
+      "data_url": null,
+      "format": "dataset landing page",
+      "license": "Repository-specific open dataset terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "wec_sim_model",
+        "mooring_model"
+      ],
+      "spatial_scope": "Device benchmark",
+      "temporal_scope": "Static model package",
+      "notes": "Open-source benchmark for coupled device and mooring simulation.",
+      "tags": [
+        "wec",
+        "lupa",
+        "moordyn",
+        "wec-sim"
+      ]
+    },
+    {
+      "source_id": "wecsim_rm3_tutorial",
+      "title": "WEC-Sim RM3 tutorial and mass properties",
+      "category": "wec_benchmarks",
+      "provider": "WEC-Sim",
+      "access_url": "https://wec-sim.github.io/WEC-Sim/main/user/tutorials.html",
+      "data_url": null,
+      "format": "documentation",
+      "license": "Project documentation terms",
+      "access_mode": "metadata_only",
+      "variables": [
+        "mass",
+        "center_of_gravity",
+        "inertia_tensor",
+        "hydrodata"
+      ],
+      "spatial_scope": "Device benchmark",
+      "temporal_scope": "Versioned docs",
+      "notes": "Documentation source for verified RM3 dimensions, inertia and setup conventions.",
+      "tags": [
+        "wec",
+        "rm3",
+        "tutorial",
+        "hydrodata"
+      ]
+    }
+  ],
+  "benchmarks": [
+    {
+      "benchmark_id": "rm3",
+      "name": "Reference Model 3",
+      "device_class": "two-body point absorber",
+      "source_urls": [
+        "https://data.openei.org/submissions/8009",
+        "https://wec-sim.github.io/WEC-Sim/main/user/tutorials.html"
+      ],
+      "known_characteristics": {
+        "float_mass_tonnes": 727.01,
+        "plate_mass_tonnes": 878.3,
+        "float_center_of_gravity_z_m": -0.72,
+        "plate_center_of_gravity_z_m": -21.29,
+        "heave_travel_m": 4.0,
+        "reaction_plate_bottom_depth_m": 35.0,
+        "deployment_depth_range_m": [
+          40.0,
+          100.0
+        ]
+      },
+      "available_assets": [
+        "geometry",
+        "mass_properties",
+        "tutorial_hydrodata"
+      ],
+      "status": "verified_open_source"
+    },
+    {
+      "benchmark_id": "mbari_wec_2021",
+      "name": "MBARI WEC 2021 deployment",
+      "device_class": "small two-body point absorber",
+      "source_urls": [
+        "https://mhkdr.openei.org/submissions/381"
+      ],
+      "known_characteristics": {
+        "paired_environmental_data": [
+          "wave",
+          "wind",
+          "temperature"
+        ],
+        "paired_response_data": [
+          "wec_hourly_production"
+        ]
+      },
+      "available_assets": [
+        "mat_file",
+        "spotter_csv",
+        "journal_reference"
+      ],
+      "status": "verified_open_source"
+    },
+    {
+      "benchmark_id": "aquaharmonics_1_20",
+      "name": "AquaHarmonics WEC 1:20 scale tank test",
+      "device_class": "point absorber",
+      "source_urls": [
+        "https://data.openei.org/submissions/7966"
+      ],
+      "known_characteristics": {
+        "scale": "1:20",
+        "campaign_year": 2018
+      },
+      "available_assets": [
+        "lab_data",
+        "control_context"
+      ],
+      "status": "verified_open_source"
+    },
+    {
+      "benchmark_id": "lupa_wecsim_moordyn",
+      "name": "Laboratory Upgrade Point Absorber",
+      "device_class": "point absorber",
+      "source_urls": [
+        "https://mhkdr.openei.org/submissions/572",
+        "https://mhkdr.openei.org/submissions/577"
+      ],
+      "known_characteristics": {
+        "includes_moorings": true,
+        "open_source_model": true
+      },
+      "available_assets": [
+        "wec_sim_model",
+        "moordyn_model",
+        "cad"
+      ],
+      "status": "verified_open_source"
+    }
+  ],
+  "artifacts": [
+    {
+      "source_id": "ndbc_stdmet",
+      "local_path": "data\\open_database\\viana\\downloads\\ndbc\\41009.txt",
+      "retrieved_at": "2026-04-29T22:14:20.989070+00:00",
+      "content_type": "text/plain; charset=ISO-8859-1",
+      "metadata": {
+        "station_id": "41009",
+        "url": "https://www.ndbc.noaa.gov/data/realtime2/41009.txt"
+      }
+    },
+    {
+      "source_id": "noaa_coops_water_level",
+      "local_path": "data\\open_database\\viana\\downloads\\coops\\9414290_water_level.json",
+      "retrieved_at": "2026-04-29T22:14:21.642340+00:00",
+      "content_type": "application/json;charset=ISO-8859-1",
+      "metadata": {
+        "station_id": "9414290",
+        "product": "water_level",
+        "params": {
+          "product": "water_level",
+          "application": "NOSSO_MAR",
+          "station": "9414290",
+          "begin_date": "20260427",
+          "end_date": "20260429",
+          "units": "metric",
+          "time_zone": "gmt",
+          "format": "json",
+          "datum": "MSL"
+        }
+      }
+    },
+    {
+      "source_id": "noaa_coops_water_level",
+      "local_path": "data\\open_database\\viana\\downloads\\coops\\9414290_wind.json",
+      "retrieved_at": "2026-04-29T22:14:22.178250+00:00",
+      "content_type": "application/json;charset=ISO-8859-1",
+      "metadata": {
+        "station_id": "9414290",
+        "product": "wind",
+        "params": {
+          "product": "wind",
+          "application": "NOSSO_MAR",
+          "station": "9414290",
+          "begin_date": "20260427",
+          "end_date": "20260429",
+          "units": "metric",
+          "time_zone": "gmt",
+          "format": "json"
+        }
+      }
+    },
+    {
+      "source_id": "noaa_coops_water_level",
+      "local_path": "data\\open_database\\viana\\downloads\\coops\\9414290_water_temperature.json",
+      "retrieved_at": "2026-04-29T22:14:22.686139+00:00",
+      "content_type": "application/json;charset=ISO-8859-1",
+      "metadata": {
+        "station_id": "9414290",
+        "product": "water_temperature",
+        "params": {
+          "product": "water_temperature",
+          "application": "NOSSO_MAR",
+          "station": "9414290",
+          "begin_date": "20260427",
+          "end_date": "20260429",
+          "units": "metric",
+          "time_zone": "gmt",
+          "format": "json"
+        }
+      }
+    },
+    {
+      "source_id": "oisst_v2_1",
+      "local_path": "data\\open_database\\viana\\downloads\\oisst\\oisst-avhrr-v02r01.20250429.nc",
+      "retrieved_at": "2026-04-29T22:14:24.643247+00:00",
+      "content_type": "application/x-netcdf",
+      "metadata": {
+        "date": "2025-04-29",
+        "url": "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/202504/oisst-avhrr-v02r01.20250429.nc"
+      }
+    },
+    {
+      "source_id": "noaa_coops_water_level",
+      "local_path": "data\\open_database\\viana\\metadata\\noaa_coops_water_level.html",
+      "retrieved_at": "2026-04-29T22:14:25.185069+00:00",
+      "content_type": "text/html",
+      "metadata": {
+        "url": "https://api.tidesandcurrents.noaa.gov/api/uat/"
+      }
+    },
+    {
+      "source_id": "gebco_grid",
+      "local_path": "data\\open_database\\viana\\metadata\\gebco_grid.html",
+      "retrieved_at": "2026-04-29T22:14:25.665457+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://www.gebco.net/data-products/gridded-bathymetry-data"
+      }
+    },
+    {
+      "source_id": "emodnet_physics",
+      "local_path": "data\\open_database\\viana\\metadata\\emodnet_physics.html",
+      "retrieved_at": "2026-04-29T22:14:26.614720+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://emodnet.ec.europa.eu/en/physics"
+      }
+    },
+    {
+      "source_id": "emodnet_geology",
+      "local_path": "data\\open_database\\viana\\metadata\\emodnet_geology.html",
+      "retrieved_at": "2026-04-29T22:14:27.654340+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://emodnet.ec.europa.eu/en/geology-2"
+      }
+    },
+    {
+      "source_id": "newa_atlas",
+      "local_path": "data\\open_database\\viana\\metadata\\newa_atlas.html",
+      "retrieved_at": "2026-04-29T22:14:28.135316+00:00",
+      "content_type": "text/html; charset=utf-8",
+      "metadata": {
+        "url": "https://www.neweuropeanwindatlas.eu/mission"
+      }
+    },
+    {
+      "source_id": "rm3_geometry",
+      "local_path": "data\\open_database\\viana\\metadata\\rm3_geometry.html",
+      "retrieved_at": "2026-04-29T22:14:29.114025+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://data.openei.org/submissions/8009"
+      }
+    },
+    {
+      "source_id": "mbari_wec_2021",
+      "local_path": "data\\open_database\\viana\\metadata\\mbari_wec_2021.html",
+      "retrieved_at": "2026-04-29T22:14:30.099356+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://mhkdr.openei.org/submissions/381"
+      }
+    },
+    {
+      "source_id": "aquaharmonics_tank_test",
+      "local_path": "data\\open_database\\viana\\metadata\\aquaharmonics_tank_test.html",
+      "retrieved_at": "2026-04-29T22:14:31.030905+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://data.openei.org/submissions/7966"
+      }
+    },
+    {
+      "source_id": "lupa_wecsim_moordyn",
+      "local_path": "data\\open_database\\viana\\metadata\\lupa_wecsim_moordyn.html",
+      "retrieved_at": "2026-04-29T22:14:31.776826+00:00",
+      "content_type": "text/html; charset=UTF-8",
+      "metadata": {
+        "url": "https://mhkdr.openei.org/submissions/572"
+      }
+    },
+    {
+      "source_id": "wecsim_rm3_tutorial",
+      "local_path": "data\\open_database\\viana\\metadata\\wecsim_rm3_tutorial.html",
+      "retrieved_at": "2026-04-29T22:14:32.190555+00:00",
+      "content_type": "text/html; charset=utf-8",
+      "metadata": {
+        "url": "https://wec-sim.github.io/WEC-Sim/main/user/tutorials.html"
+      }
+    }
+  ],
+  "errors": [],
+  "parameters": {
+    "ndbc_station": "41009",
+    "coops_station": "9414290",
+    "coops_days": 2,
+    "oisst_date": null
+  }
+}
