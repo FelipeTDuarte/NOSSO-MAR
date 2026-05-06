@@ -556,6 +556,17 @@ print(result.total_power)       # sum kW
 | T13 Coupling F1C | ○ | `coupling/` does not exist |
 | T14 Conformal UQ | ○ | `uncertainty/` does not exist |
 | T15 WEC farm | ○ | `farm/` does not exist |
+
+---
+
+## T16–T21 — Simulation Interface, GUI and Documentation
+
+These tasks transform NOSSO-MAR from a Python API into a fully configurable
+simulation system with graphical interface and complete documentation.
+Full specification in `TASKS_T16_T17_T18.md` and `TASKS_T19_T20_T21.md`.
+
+| Task | Description | Depends on | Status |
+|------|-------------|------------|--------|
 | T16 | Site and domain configuration (YAML + grid builder + bathymetry) | T00 | ○ |
 | T17 | Boundary conditions and forcing interface (wave, tide, wind, current) + contracts.py extension | T00, T04, T16 | ○ |
 | T18 | Output configuration (variable catalogue, writers, validation exporters) | T15, T16, T17 | ○ |
@@ -563,8 +574,7 @@ print(result.total_power)       # sum kW
 | T20 | User manual — installation, GUI guide, input formats, outputs, troubleshooting | T19 | ○ |
 | T21 | Technical manual + 7 tutorials + API reference | T15–T19 | ○ |
 
-
-**6 of 15 tasks complete.**
+**6 of 21 tasks complete.**
 
 ---
 
