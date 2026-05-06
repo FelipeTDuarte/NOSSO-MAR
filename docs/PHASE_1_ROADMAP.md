@@ -556,6 +556,13 @@ print(result.total_power)       # sum kW
 | T13 Coupling F1C | ○ | `coupling/` does not exist |
 | T14 Conformal UQ | ○ | `uncertainty/` does not exist |
 | T15 WEC farm | ○ | `farm/` does not exist |
+| T16 | Site and domain configuration (YAML + grid builder + bathymetry) | T00 | ○ |
+| T17 | Boundary conditions and forcing interface (wave, tide, wind, current) + contracts.py extension | T00, T04, T16 | ○ |
+| T18 | Output configuration (variable catalogue, writers, validation exporters) | T15, T16, T17 | ○ |
+| T19 | Graphical user interface — Streamlit, 5 tabs, map widget, results panel | T15, T16, T17, T18 | ○ |
+| T20 | User manual — installation, GUI guide, input formats, outputs, troubleshooting | T19 | ○ |
+| T21 | Technical manual + 7 tutorials + API reference | T15–T19 | ○ |
+
 
 **6 of 15 tasks complete.**
 
