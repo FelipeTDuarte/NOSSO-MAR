@@ -5,7 +5,20 @@
 A research-grade, modular AI framework for fast ocean and coastal physics simulation,
 built on Physics-Informed Neural Operators (PIMR-NO) and open metocean data.
 
----
+```
+## Vision — Phases 0 to 7
+
+```
+Phase 0  Foundational architecture          ✓ complete
+Phase 1  WSI + Wave field operators         → in progress
+Phase 2  Spectral waves + data assimilation
+Phase 3  Hydrodynamics and tides
+Phase 4  Morphodynamics
+Phase 5  Tracer transport
+Phase 6  Advanced FSI / CFD
+Phase 7  Digital twin + MARL optimisation
+  
+```
 
 ## Architecture layers
 
