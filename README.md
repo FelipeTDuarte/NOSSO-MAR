@@ -8,7 +8,7 @@ built on Physics-Informed Neural Operators (PIMR-NO) and open metocean data.
 ```
 ## Vision — Phases 0 to 7
 
-```
+
 Phase 0  Foundational architecture          ✓ complete
 Phase 1  WSI + Wave field operators         → in progress
 Phase 2  Spectral waves + data assimilation
