@@ -1,9 +1,4 @@
-"""Capytaine-backed WEC hydrodynamic dataset generation.
-
-The runner uses Capytaine when it is installed. For lightweight local testing,
-it falls back to the analytic cylinder model while preserving the same
-``WECState`` contract and metadata so downstream training code does not change.
-"""
+"""Capytaine-backed WEC hydrodynamic dataset generation."""
 
 from __future__ import annotations
 
@@ -40,9 +35,16 @@ def _record_from_state(case_id: str, state: WECState) -> dict[str, Any]:
     }
 
 
-def _run_single_payload(payload: tuple[int, dict[str, float], list[float], bool]) -> dict[str, Any]:
-    index, sample, freq, use_capytaine = payload
-    runner = CapytaineRunner(use_capytaine=use_capytaine, max_workers=1)
+def _run_single_payload(
+    payload: tuple[int, dict[str, float], list[float], bool, tuple[int, int, int], bool],
+) -> dict[str, Any]:
+    index, sample, freq, use_capytaine, mesh_resolution, check_wavelength = payload
+    runner = CapytaineRunner(
+        use_capytaine=use_capytaine,
+        max_workers=1,
+        mesh_resolution=mesh_resolution,
+        check_wavelength=check_wavelength,
+    )
     mass = sample.get("mass")
     if mass is None:
         mass = 1025.0 * np.pi * sample["radius"] ** 2 * sample["draft"]
@@ -64,6 +66,8 @@ class CapytaineRunner:
 
     use_capytaine: bool = True
     max_workers: int | None = None
+    mesh_resolution: tuple[int, int, int] = (1, 8, 4)
+    check_wavelength: bool = False
 
     @property
     def backend(self) -> str:
@@ -104,23 +108,94 @@ class CapytaineRunner:
         bpto: float,
         case_id: str,
     ) -> WECState:
-        """Capytaine hook.
+        """Run Capytaine radiation and diffraction problems for heave."""
 
-        This method intentionally falls back to the analytic model until the
-        project pins a Capytaine geometry setup. It keeps the backend boundary
-        in one place and makes the public runner usable today.
-        """
+        import capytaine as cpt
 
-        state = build_analytic_wec_state(
+        body_mass = float(mass if mass is not None else 1025.0 * np.pi * radius**2 * draft)
+        mesh = cpt.mesh_vertical_cylinder(
+            length=float(draft),
+            radius=float(radius),
+            center=(0.0, 0.0, -0.5 * float(draft)),
+            resolution=self.mesh_resolution,
+            name=f"{case_id}_mesh",
+        )
+        body = cpt.FloatingBody(
+            mesh=mesh,
+            mass=body_mass,
+            center_of_mass=(0.0, 0.0, -0.5 * float(draft)),
+            name=case_id,
+        )
+        body.add_translation_dof(name="Heave")
+
+        solver = cpt.BEMSolver()
+        radiation_problems = [
+            cpt.RadiationProblem(
+                body=body,
+                water_depth=float(depth),
+                freq=float(freq_value),
+                radiating_dof="Heave",
+                rho=1025.0,
+            )
+            for freq_value in freq
+        ]
+        diffraction_problems = [
+            cpt.DiffractionProblem(
+                body=body,
+                water_depth=float(depth),
+                freq=float(freq_value),
+                wave_direction=0.0,
+                rho=1025.0,
+            )
+            for freq_value in freq
+        ]
+        results = solver.solve_all(
+            radiation_problems + diffraction_problems,
+            n_jobs=1,
+            keep_details=False,
+            _check_wavelength=self.check_wavelength,
+        )
+        radiation_results = sorted(
+            [res for res in results if hasattr(res, "radiating_dof")],
+            key=lambda res: float(res.freq),
+        )
+        diffraction_results = sorted(
+            [res for res in results if not hasattr(res, "radiating_dof")],
+            key=lambda res: float(res.freq),
+        )
+        if len(radiation_results) != len(freq) or len(diffraction_results) != len(freq):
+            raise RuntimeError(
+                "Capytaine returned an unexpected result set: "
+                f"{len(radiation_results)} radiation and {len(diffraction_results)} diffraction results "
+                f"for {len(freq)} frequencies."
+            )
+
+        added_mass_signed = np.asarray([res.added_mass["Heave"] for res in radiation_results], dtype=float)
+        damping_signed = np.asarray([res.radiation_damping["Heave"] for res in radiation_results], dtype=float)
+        excitation = np.asarray([res.forces["Heave"] for res in diffraction_results], dtype=complex)
+
+        return WECState(
+            freq=freq,
+            added_mass=np.maximum(np.abs(added_mass_signed), 1.0e-9),
+            damping=np.maximum(np.abs(damping_signed), 1.0e-9),
+            excitation_real=excitation.real,
+            excitation_imag=excitation.imag,
+            device_type="capytaine_vertical_cylinder",
             radius=radius,
             draft=draft,
-            depth=depth,
-            mass=mass,
+            mass=body_mass,
             bpto=bpto,
-            freq=freq,
-            metadata={"case_id": case_id, "backend": "capytaine_placeholder"},
+            depth=depth,
+            metadata={
+                "case_id": case_id,
+                "backend": "capytaine",
+                "dof": "Heave",
+                "mesh_resolution": list(self.mesh_resolution),
+                "raw_added_mass_signed": added_mass_signed.tolist(),
+                "raw_radiation_damping_signed": damping_signed.tolist(),
+                "sign_convention": "absolute values stored in WECState to satisfy non-negative A/B contract",
+            },
         )
-        return state
 
     def run_lhs_sweep(
         self,
@@ -166,7 +241,14 @@ class CapytaineRunner:
             )
 
         payloads = [
-            (index, sample, list(np.asarray(freq_array, dtype=float)), self.use_capytaine)
+            (
+                index,
+                sample,
+                list(np.asarray(freq_array, dtype=float)),
+                self.use_capytaine,
+                self.mesh_resolution,
+                self.check_wavelength,
+            )
             for index, sample in enumerate(normalized_samples)
         ]
         if self.max_workers and self.max_workers > 1:

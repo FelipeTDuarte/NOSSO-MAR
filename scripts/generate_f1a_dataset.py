@@ -41,6 +41,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--n-samples", type=int, default=None, help="Override sample count for smoke runs.")
     parser.add_argument("--max-workers", type=int, default=1, help="Parallel worker count.")
     parser.add_argument(
+        "--mesh-resolution",
+        default="1,8,4",
+        help="Capytaine cylinder mesh resolution as nr,ntheta,nz.",
+    )
+    parser.add_argument(
+        "--check-wavelength",
+        action="store_true",
+        help="Enable Capytaine wavelength-vs-mesh checks.",
+    )
+    parser.add_argument(
         "--analytic-fallback",
         action="store_true",
         help="Force the analytic fallback instead of importing Capytaine.",
@@ -64,7 +74,15 @@ def main(argv: list[str] | None = None) -> int:
     if not output.is_absolute():
         output = ROOT / output
 
-    runner = CapytaineRunner(use_capytaine=not args.analytic_fallback, max_workers=args.max_workers)
+    mesh_resolution = tuple(int(item.strip()) for item in args.mesh_resolution.split(","))
+    if len(mesh_resolution) != 3:
+        raise ValueError("--mesh-resolution must contain exactly three comma-separated integers.")
+    runner = CapytaineRunner(
+        use_capytaine=not args.analytic_fallback,
+        max_workers=args.max_workers,
+        mesh_resolution=mesh_resolution,
+        check_wavelength=args.check_wavelength,
+    )
     splits = runner.run_lhs_dataset(
         n_samples=n_samples,
         param_bounds=_bounds_from_config(config),
@@ -81,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         "freq_start_hz": float(freq[0]),
         "freq_stop_hz": float(freq[-1]),
         "freq_count": int(len(freq)),
+        "mesh_resolution": list(mesh_resolution),
     }
     if output.suffix == ".zarr":
         write_dataset_zarr(output, splits=splits, metadata=metadata)

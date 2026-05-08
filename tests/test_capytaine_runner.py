@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from nossomar.core.contracts import WECState
 from nossomar.data.capytaine_runner import CapytaineRunner
@@ -18,6 +19,20 @@ def test_capytaine_runner_single_case_has_physical_bounds() -> None:
     assert state.metadata["backend"] == "analytic_fallback"
     assert np.all(state.damping >= 0.0)
     assert float(state.added_mass[mid]) > 0.0
+
+
+def test_capytaine_runner_real_backend_smoke() -> None:
+    pytest.importorskip("capytaine")
+    runner = CapytaineRunner(use_capytaine=True, mesh_resolution=(1, 6, 2), check_wavelength=False)
+
+    state = runner.run_single(radius=2.0, draft=2.0, depth=20.0, freq_array=np.array([0.4]), case_id="real-smoke")
+
+    assert state.metadata["backend"] == "capytaine"
+    assert state.device_type == "capytaine_vertical_cylinder"
+    assert np.all(state.added_mass > 0.0)
+    assert np.all(state.damping > 0.0)
+    assert np.isfinite(state.excitation_real).all()
+    assert np.isfinite(state.excitation_imag).all()
 
 
 def test_lhs_sweep_returns_requested_states() -> None:
