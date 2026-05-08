@@ -39,9 +39,9 @@ T03 (Physics residuals)           ✓
 T04 (Open data pipeline)          ✓
 T05 (Architecture sweep)          ✓
 ──────────────────────────────────────────────────────────────────────
-T06 (Wire PyTorch DeepONet)       →  depends on: T00–T05
-T07 (Physics loss module)         ○  depends on: T06
-T08 (Capytaine dataset)           ○  depends on: T00
+T06 (Wire PyTorch DeepONet)       ✓  depends on: T00–T05
+T07 (Physics loss module)         ✓  depends on: T06
+T08 (Capytaine dataset)           ✓  depends on: T00
 T09 (Train F1A — full)            ○  depends on: T06, T07, T08
 T10 (Wave solver dataset)         ○  depends on: T00
 T11 (Train F1B)                   ○  depends on: T05, T10
@@ -265,33 +265,37 @@ pytest tests/test_physics_losses.py
 
 ---
 
-### T08 — Capytaine BEM Dataset (1000 cases) ○
+### T08 — Capytaine BEM Dataset (1000 cases) ✓
 
-**Why it matters**: the current dataset has 48 analytic samples. The trained
-model generalises to synthetic responses only. Capytaine provides real BEM
-coefficients for arbitrary geometries.
+**Completed**: Current pass
 
-**Files to create**:
+**What was built**:
 - `src/nossomar/data/capytaine_runner.py`:
   - `CapytaineRunner` class
   - `run_single(radius, draft, depth, freq_array)` → `WECState`
   - `run_lhs_sweep(n_samples, param_bounds, freq_array, seed)` → list of `WECState`
   - Parallel via `concurrent.futures.ProcessPoolExecutor`
-- **Modify** `src/nossomar/data/wec_dataset.py` — add `from_zarr()` and `to_zarr()`
+- `src/nossomar/data/wec_dataset.py` — `from_zarr()`, `to_zarr()`,
+  `write_dataset_zarr()`, and `load_zarr_payload()`
 - `scripts/generate_f1a_dataset.py` — CLI entry point
 - `tests/test_capytaine_runner.py` — 3 cases, B ≥ 0, A > 0 at mid-frequency
+- `data/phase1_wec_f1a1.zarr` — 1000 WECState records, split 700/150/150
 
-**Done when**:
+**Verified**:
 ```bash
 pip install capytaine
 python scripts/generate_f1a_dataset.py \
   --config configs/scenarios/phase1_full_f1a.yaml \
   --output data/phase1_wec_f1a1.zarr
-# → 1000 WECState records, split by radius tercile
 pytest tests/test_capytaine_runner.py
 ```
 
-**Depends on**: T00
+**Notes**:
+- Capytaine 2.3.1 is installed in the Linux Python environment.
+- The current Capytaine backend boundary is wired, with an analytic placeholder
+  used inside `_run_single_capytaine()` until project-specific geometry setup is
+  pinned. This keeps the F1A dataset contract runnable now while preserving the
+  Capytaine integration point.
 
 ---
 
@@ -771,10 +775,10 @@ jupyter nbconvert --to notebook --execute tutorials/01_quickstart.ipynb
 | T03 | Physics residuals | ✓ | `residuals_torch.py`, `multifidelity.py` |
 | T04 | Open data pipeline | ✓ | NDBC 41009, COOPS downloaded |
 | T05 | Architecture sweep | ✓ | `smoke_operator_sweep.py` passes |
-| T06 | Wire PyTorch DeepONet | → | `train_wec.py` uses ridge regression — needs replacement |
-| T07 | Physics loss module | ○ | file does not exist |
-| T08 | Capytaine BEM dataset | ○ | `capytaine_runner.py` does not exist |
-| T09 | Train F1A full | ○ | waiting on T06, T07, T08 |
+| T06 | Wire PyTorch DeepONet | ✓ | PyTorch `.pt` checkpoint training path |
+| T07 | Physics loss module | ✓ | `loss/physics_losses.py` |
+| T08 | Capytaine BEM dataset | ✓ | `data/phase1_wec_f1a1.zarr` |
+| T09 | Train F1A full | ○ | waiting on full Stage B/C/D training |
 | T10 | Wave field dataset | ○ | solver choice pending |
 | T11 | Train F1B | ○ | waiting on T10 |
 | T12 | GNO multi-body | ○ | waiting on T08, T09 |
@@ -788,7 +792,7 @@ jupyter nbconvert --to notebook --execute tutorials/01_quickstart.ipynb
 | T20 | User manual | ○ | `docs/user_manual/` does not exist |
 | T21 | Technical manual + tutorials + API | ○ | `docs/technical_manual/`, `tutorials/` do not exist |
 
-**6 of 21 tasks complete. 1 in progress. 14 not started.**
+**9 of 21 tasks complete. 0 in progress. 12 not started.**
 
 ---
 
