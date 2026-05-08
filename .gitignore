@@ -23,3 +23,5 @@ checkpoints/
 
 # VSCode
 .vscode/
+.venv-linux/
+.venv/

@@ -187,6 +187,26 @@ class WECDataset:
         payload = load_dataset_json(path)
         return cls(records=payload["splits"][split], split=split)
 
+    @classmethod
+    def from_zarr(cls, path: str | Path, split: str = "train") -> "WECDataset":
+        """Load a WEC dataset from a lightweight Zarr-style directory.
+
+        The Phase 1 roadmap uses ``.zarr`` as the dataset contract. To keep the
+        local pipeline runnable without requiring the optional zarr package,
+        this stores the same split payload as JSON inside the directory.
+        """
+
+        payload = load_zarr_payload(path)
+        return cls(records=payload["splits"][split], split=split)
+
+    @staticmethod
+    def to_zarr(
+        path: str | Path,
+        splits: dict[str, list[dict[str, Any]]],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        write_dataset_zarr(path, splits=splits, metadata=metadata)
+
     def __len__(self) -> int:
         return len(self.records)
 
@@ -243,6 +263,34 @@ class WECDataset:
 
 
 WECDatabase = WECDataset
+
+
+def write_dataset_zarr(
+    path: str | Path,
+    splits: dict[str, list[dict[str, Any]]],
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Persist a WEC dataset as a Zarr-style directory with JSON payloads."""
+
+    target = Path(path)
+    target.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "metadata": metadata or {},
+        "splits": splits,
+    }
+    (target / "dataset.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (target / ".zattrs").write_text(json.dumps(payload["metadata"], indent=2), encoding="utf-8")
+    (target / "metadata.yaml").write_text(yaml.safe_dump(payload["metadata"], sort_keys=True), encoding="utf-8")
+
+
+def load_zarr_payload(path: str | Path) -> dict[str, Any]:
+    """Load a dataset written by :func:`write_dataset_zarr`."""
+
+    target = Path(path)
+    dataset_json = target / "dataset.json"
+    if not dataset_json.exists():
+        raise FileNotFoundError(f"Expected lightweight Zarr dataset payload at {dataset_json}.")
+    return json.loads(dataset_json.read_text(encoding="utf-8"))
 
 
 def build_wec_database(
