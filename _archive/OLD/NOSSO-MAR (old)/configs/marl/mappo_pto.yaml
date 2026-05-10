@@ -1,9 +1,0 @@
-env:
-  n_wec: 5; episode_length: 500; dt: 1.0
-
-agent_cfg:
-  hidden: 128; lr: 3.0e-4; clip_eps: 0.2
-  vf_coef: 0.5; ent_coef: 0.01
-  Bpto_min: 1000.0; Bpto_max: 1000000.0
-
-n_episodes: 5000; n_steps: 2048; n_epochs: 10
