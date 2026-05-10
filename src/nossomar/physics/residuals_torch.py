@@ -62,98 +62,51 @@ def navier_stokes_2d_residual(
 
 
 def navier_stokes_3d_residual(
-    u: torch.Tensor,
-    v: torch.Tensor,
-    w: torch.Tensor,
-    p: torch.Tensor,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    z: torch.Tensor,
-    t: torch.Tensor,
-    *,
-    rho: float = 1025.0,
-    nu: float = 1.0e-6,
+    u: torch.Tensor, v: torch.Tensor, w: torch.Tensor,
+    p: torch.Tensor, x: torch.Tensor, y: torch.Tensor,
+    z: torch.Tensor, t: torch.Tensor,
+    *, rho: float = 1025.0, nu: float = 1.0e-6,
     body_force: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> dict[str, torch.Tensor]:
     """Residuals of the incompressible 3D Navier-Stokes equations."""
 
-    u_t = _grad(u, t)
-    u_x = _grad(u, x)
-    u_y = _grad(u, y)
-    u_z = _grad(u, z)
-    v_t = _grad(v, t)
-    v_x = _grad(v, x)
-    v_y = _grad(v, y)
-    v_z = _grad(v, z)
-    w_t = _grad(w, t)
-    w_x = _grad(w, x)
-    w_y = _grad(w, y)
-    w_z = _grad(w, z)
-    p_x = _grad(p, x)
-    p_y = _grad(p, y)
-    p_z = _grad(p, z)
-
+    u_t = _grad(u, t); u_x = _grad(u, x); u_y = _grad(u, y); u_z = _grad(u, z)
+    v_t = _grad(v, t); v_x = _grad(v, x); v_y = _grad(v, y); v_z = _grad(v, z)
+    w_t = _grad(w, t); w_x = _grad(w, x); w_y = _grad(w, y); w_z = _grad(w, z)
+    p_x = _grad(p, x); p_y = _grad(p, y); p_z = _grad(p, z)
     lap_u = _grad(u_x, x) + _grad(u_y, y) + _grad(u_z, z)
     lap_v = _grad(v_x, x) + _grad(v_y, y) + _grad(v_z, z)
     lap_w = _grad(w_x, x) + _grad(w_y, y) + _grad(w_z, z)
     continuity = u_x + v_y + w_z
-
     fx, fy, fz = body_force
-    momentum_x = u_t + u * u_x + v * u_y + w * u_z + (1.0 / rho) * p_x - nu * lap_u - fx
-    momentum_y = v_t + u * v_x + v * v_y + w * v_z + (1.0 / rho) * p_y - nu * lap_v - fy
-    momentum_z = w_t + u * w_x + v * w_y + w * w_z + (1.0 / rho) * p_z - nu * lap_w - fz
-    return {
-        "continuity": continuity,
-        "momentum_x": momentum_x,
-        "momentum_y": momentum_y,
-        "momentum_z": momentum_z,
-    }
+    momentum_x = u_t + u*u_x + v*u_y + w*u_z + (1.0/rho)*p_x - nu*lap_u - fx
+    momentum_y = v_t + u*v_x + v*v_y + w*v_z + (1.0/rho)*p_y - nu*lap_v - fy
+    momentum_z = w_t + u*w_x + v*w_y + w*w_z + (1.0/rho)*p_z - nu*lap_w - fz
+    return {"continuity": continuity, "momentum_x": momentum_x,
+            "momentum_y": momentum_y, "momentum_z": momentum_z}
 
 
 def shallow_water_residual(
-    eta: torch.Tensor,
-    u: torch.Tensor,
-    v: torch.Tensor,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    t: torch.Tensor,
-    depth: torch.Tensor,
-    *,
-    gravity: float = 9.81,
+    eta: torch.Tensor, u: torch.Tensor, v: torch.Tensor,
+    x: torch.Tensor, y: torch.Tensor, t: torch.Tensor,
+    depth: torch.Tensor, *, gravity: float = 9.81,
 ) -> dict[str, torch.Tensor]:
     """Residuals of the depth-averaged shallow-water equations."""
 
-    eta_t = _grad(eta, t)
-    eta_x = _grad(eta, x)
-    eta_y = _grad(eta, y)
-    u_t = _grad(u, t)
-    u_x = _grad(u, x)
-    u_y = _grad(u, y)
-    v_t = _grad(v, t)
-    v_x = _grad(v, x)
-    v_y = _grad(v, y)
-
+    eta_t = _grad(eta, t); eta_x = _grad(eta, x); eta_y = _grad(eta, y)
+    u_t = _grad(u, t); u_x = _grad(u, x); u_y = _grad(u, y)
+    v_t = _grad(v, t); v_x = _grad(v, x); v_y = _grad(v, y)
     hu_x = _grad((depth + eta) * u, x)
     hv_y = _grad((depth + eta) * v, y)
     continuity = eta_t + hu_x + hv_y
     momentum_x = u_t + u * u_x + v * u_y + gravity * eta_x
     momentum_y = v_t + u * v_x + v * v_y + gravity * eta_y
-    return {
-        "continuity": continuity,
-        "momentum_x": momentum_x,
-        "momentum_y": momentum_y,
-    }
+    return {"continuity": continuity, "momentum_x": momentum_x, "momentum_y": momentum_y}
 
 
 def wave_action_balance_residual(
-    action_density: torch.Tensor,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    t: torch.Tensor,
-    *,
-    c_gx: torch.Tensor,
-    c_gy: torch.Tensor,
-    source_term: torch.Tensor | None = None,
+    action_density: torch.Tensor, x: torch.Tensor, y: torch.Tensor, t: torch.Tensor,
+    *, c_gx: torch.Tensor, c_gy: torch.Tensor, source_term: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Residual of a reduced wave-action balance advection equation."""
 
@@ -165,14 +118,8 @@ def wave_action_balance_residual(
 
 
 def exner_residual(
-    bed_elevation: torch.Tensor,
-    x: torch.Tensor,
-    y: torch.Tensor,
-    t: torch.Tensor,
-    *,
-    sediment_flux_x: torch.Tensor,
-    sediment_flux_y: torch.Tensor,
-    porosity: float = 0.4,
+    bed_elevation: torch.Tensor, x: torch.Tensor, y: torch.Tensor, t: torch.Tensor,
+    *, sediment_flux_x: torch.Tensor, sediment_flux_y: torch.Tensor, porosity: float = 0.4,
 ) -> torch.Tensor:
     """Residual of the Exner morphodynamic equation."""
 
@@ -184,13 +131,9 @@ def exner_residual(
 
 def wec_frequency_domain_residual(
     omega_rad_s: torch.Tensor,
-    *,
-    mass: torch.Tensor | float,
-    added_mass: torch.Tensor,
-    damping: torch.Tensor,
-    stiffness: torch.Tensor | float,
-    displacement: torch.Tensor,
-    excitation: torch.Tensor,
+    *, mass: torch.Tensor | float, added_mass: torch.Tensor,
+    damping: torch.Tensor, stiffness: torch.Tensor | float,
+    displacement: torch.Tensor, excitation: torch.Tensor,
     pto_damping: torch.Tensor | float = 0.0,
 ) -> torch.Tensor:
     """Frequency-domain WEC equation-of-motion residual."""
@@ -211,3 +154,53 @@ def residual_mse(residual: Any) -> torch.Tensor:
     tensor = residual if torch.is_complex(residual) else residual.to(torch.float64)
     squared = torch.abs(tensor) ** 2
     return squared.mean()
+
+
+# ---------------------------------------------------------------------------
+# M1 residual helpers — additive extension (spec 11)
+# All existing functions above are unchanged.
+# ---------------------------------------------------------------------------
+
+from dataclasses import dataclass as _dataclass
+
+
+@_dataclass(frozen=True)
+class ResidualMetadata:
+    residual_id: str
+    model_class: str
+    required_observables: tuple
+    required_parameters: tuple
+    output_layout: str
+
+
+M1_EOM_METADATA = ResidualMetadata(
+    residual_id="M1_EOM",
+    model_class="M1",
+    required_observables=("xi", "added_mass", "radiation_damping", "excitation_force"),
+    required_parameters=("omega", "mass", "pto_damping", "stiffness"),
+    output_layout="batch x frequency x dof",
+)
+
+
+def compute_m1_eom_residual(
+    omega: torch.Tensor,
+    *,
+    mass: "torch.Tensor | float",
+    added_mass: torch.Tensor,
+    damping: torch.Tensor,
+    stiffness: "torch.Tensor | float",
+    displacement: torch.Tensor,
+    excitation: torch.Tensor,
+    pto_damping: "torch.Tensor | float" = 0.0,
+) -> torch.Tensor:
+    """Named alias for wec_frequency_domain_residual exposing M1 metadata contract."""
+    return wec_frequency_domain_residual(
+        omega,
+        mass=mass,
+        added_mass=added_mass,
+        damping=damping,
+        stiffness=stiffness,
+        displacement=displacement,
+        excitation=excitation,
+        pto_damping=pto_damping,
+    )
