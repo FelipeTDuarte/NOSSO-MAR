@@ -1,0 +1,5 @@
+cluster: marenostrum5
+n_nodes: 8
+walltime: "12:00:00"
+account: "bsc_project"
+mixed_precision: true

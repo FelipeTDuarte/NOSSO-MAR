@@ -1,0 +1,36 @@
+# NOSSO-MAR Phase 2 training configuration
+# Used by train_phase2.py
+
+model:
+  d_latent: 64
+  rino:
+    in_features: 4      # [radius, draft, depth, bpto]
+    hidden: 128
+  deeponet:
+    hidden: 128
+    n_modes: 64
+
+training:
+  epochs: 200
+  warmup_epochs: 10     # freeze RINO encoder during warm-start
+  lr: 3.0e-4
+  weight_decay: 1.0e-5
+  batch_size: 64
+  grad_clip: 1.0
+  scheduler: cosine
+
+data:
+  n_cases: 2000
+  seed: 42
+  omega_min: 0.2
+  omega_max: 4.0
+  n_omega: 40
+  # Geometry parameter ranges for LHS sampling
+  radius_range: [0.5, 5.0]    # metres
+  draft_range:  [0.5, 8.0]    # metres
+  depth_range:  [10.0, 80.0]  # metres
+  bpto_range:   [1.0e3, 1.0e5] # N.s/m
+
+validation:
+  rmse_threshold: 0.15     # 15% relative RMSE on added mass is Phase 2 pass criterion
+  benchmark: data/benchmarks/rm3_heave_synthetic.json
