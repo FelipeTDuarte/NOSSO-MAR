@@ -92,3 +92,140 @@ class CurriculumWeight:
             return float(self.end_val)
         fraction = (epoch - self.start_epoch) / (self.end_epoch - self.start_epoch)
         return float(self.start_val + fraction * (self.end_val - self.start_val))
+
+
+# ---------------------------------------------------------------------------
+# Physics loss registry — additive extension (specs 11 and 12)
+# All functions and classes above are unchanged. This section adds a registry
+# for declarative activation of loss terms via YAML config.
+# ---------------------------------------------------------------------------
+
+from dataclasses import dataclass as _dataclass
+from typing import Any as _Any, Dict as _Dict, Iterable as _Iterable, Protocol as _Protocol
+
+
+class _LossFnProtocol(_Protocol):
+    def __call__(self, preds: dict, targets: dict, ctx: dict) -> torch.Tensor: ...
+
+
+@_dataclass(frozen=True)
+class LossSpec:
+    loss_id: str
+    name: str
+    model_classes: tuple
+    required_observables: tuple = ()
+    required_parameters: tuple = ()
+    supports_complex: bool = False
+    default_weight: float = 1.0
+    notes: str = ""
+
+
+@_dataclass
+class LossTerm:
+    spec: LossSpec
+    fn: _LossFnProtocol
+
+    def validate_inputs(self, preds: dict, targets: dict, ctx: dict) -> None:
+        available = set(preds.keys()) | set(targets.keys()) | set(ctx.keys())
+        missing_obs = [k for k in self.spec.required_observables if k not in available]
+        missing_par = [k for k in self.spec.required_parameters if k not in available]
+        if missing_obs or missing_par:
+            raise KeyError(
+                f"Loss {self.spec.loss_id} missing: observables={missing_obs} parameters={missing_par}"
+            )
+
+    def __call__(self, preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
+        self.validate_inputs(preds, targets, ctx)
+        return self.fn(preds, targets, ctx)
+
+
+class PhysicsLossRegistry:
+    """Lightweight registry for declarative loss activation from YAML configs."""
+
+    def __init__(self) -> None:
+        self._terms: _Dict[str, LossTerm] = {}
+
+    def register(self, term: LossTerm) -> None:
+        if term.spec.loss_id in self._terms:
+            raise ValueError(f"Duplicate loss_id: {term.spec.loss_id}")
+        self._terms[term.spec.loss_id] = term
+
+    def get(self, loss_id: str) -> LossTerm:
+        if loss_id not in self._terms:
+            raise KeyError(f"Unknown loss_id: {loss_id}")
+        return self._terms[loss_id]
+
+    def available(self) -> tuple:
+        return tuple(sorted(self._terms.keys()))
+
+    def build_from_config(self, loss_cfgs: _Iterable[dict]) -> list:
+        built = []
+        for cfg in loss_cfgs:
+            if not cfg.get("enabled", False):
+                continue
+            lid = cfg["loss_id"]
+            weight = float(cfg.get("weight", self.get(lid).spec.default_weight))
+            built.append((self.get(lid), weight))
+        return built
+
+
+def _registry_l00_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
+    pred = preds["prediction"] if isinstance(preds["prediction"], torch.Tensor) else torch.as_tensor(preds["prediction"])
+    tgt = targets["target"] if isinstance(targets["target"], torch.Tensor) else torch.as_tensor(targets["target"])
+    return ((pred - tgt) ** 2).mean()
+
+
+def _registry_l30_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
+    return wec_eom_loss(
+        A=preds["added_mass"],
+        B=preds["radiation_damping"],
+        Fex_real=preds["excitation_force"].real,
+        Fex_imag=preds["excitation_force"].imag,
+        freq=ctx["freq"],
+        mass=ctx["mass"],
+        bpto=ctx.get("bpto", 0.0),
+        stiffness=ctx.get("stiffness", 0.0),
+        displacement=preds.get("displacement"),
+    )
+
+
+def _registry_l31_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
+    return damping_nonneg_loss(preds["radiation_damping"])
+
+
+def build_default_registry() -> PhysicsLossRegistry:
+    """Build the default registry wiring existing loss functions to registry IDs."""
+    reg = PhysicsLossRegistry()
+    reg.register(LossTerm(
+        spec=LossSpec(
+            loss_id="L-00", name="data_fidelity",
+            model_classes=("M1", "M2", "M3", "M4", "M5"),
+            required_observables=("prediction", "target"),
+            default_weight=1.0,
+            notes="Reference supervised loss. Safe default for Phase 1.",
+        ),
+        fn=_registry_l00_fn,
+    ))
+    reg.register(LossTerm(
+        spec=LossSpec(
+            loss_id="L-30", name="wsi_equation_of_motion",
+            model_classes=("M1",),
+            required_observables=("added_mass", "radiation_damping", "excitation_force"),
+            required_parameters=("freq", "mass"),
+            supports_complex=True,
+            default_weight=0.1,
+            notes="Wraps existing wec_eom_loss. Capytaine-anchored F1A.",
+        ),
+        fn=_registry_l30_fn,
+    ))
+    reg.register(LossTerm(
+        spec=LossSpec(
+            loss_id="L-31", name="passivity_positivity",
+            model_classes=("M1",),
+            required_observables=("radiation_damping",),
+            default_weight=0.01,
+            notes="Wraps existing damping_nonneg_loss.",
+        ),
+        fn=_registry_l31_fn,
+    ))
+    return reg
