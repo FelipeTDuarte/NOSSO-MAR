@@ -1,5 +1,0 @@
-cluster: leonardo
-n_nodes: 8
-walltime: "24:00:00"
-account: "EUHPC_PROJECT"
-mixed_precision: true
