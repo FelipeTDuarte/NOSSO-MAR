@@ -23,7 +23,3 @@ checkpoints/
 
 # VSCode
 .vscode/
-.venv-linux/
-.venv/
-_archive/
-.venv-wsl/
