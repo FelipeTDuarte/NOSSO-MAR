@@ -25,3 +25,4 @@ checkpoints/
 .vscode/
 .venv-linux/
 .venv/
+_archive/

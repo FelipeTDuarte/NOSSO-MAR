@@ -1,9 +1,0 @@
-site_name: "North Sea Test Site"
-grid_shape: [512, 512]
-grid_resolution_m: 50.0
-assimilation_cycle: 900.0
-
-sensors:
-  - {id: platform_01, type: wave_buoy, position: [10000, 12000]}
-
-storage_path: data/twin_states/north_sea
