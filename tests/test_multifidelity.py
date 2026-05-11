@@ -9,7 +9,7 @@ from nossomar.physics.multifidelity import (
     phase_series_to_spectrum,
     reconstruct_irregular_wave,
 )
-from nossomar.physics.residuals_torch import residual_mse, wec_frequency_domain_residual
+from nossomar.physics.residuals_torch import residual_mse, wec_frequency_domain_residual, compute_m1_eom_residual
 
 
 def test_phase_series_and_reconstruction_produce_positive_bulk_statistics() -> None:
@@ -56,3 +56,20 @@ def test_wec_frequency_domain_residual_mse_is_zero_for_consistent_balance() -> N
         pto_damping=pto,
     )
     assert torch.isclose(residual_mse(residual), torch.tensor(0.0, dtype=torch.float64))
+
+def test_compute_m1_eom_residual_returns_complex_array():
+    obs = {
+        'xi': np.array([1 + 0j]),
+        'added_mass': np.array([0.1 + 0j]),
+        'radiation_damping': np.array([0.05 + 0j]),
+        'excitation_force': np.array([0.2 + 0j]),
+    }
+    params = {
+        'omega': np.array([1.0]),
+        'M': np.array([1.0]),
+        'C_pto': np.array([0.0]),
+        'K_h': np.array([0.0]),
+        'K_pto': np.array([0.0]),
+    }
+    residual = compute_m1_eom_residual(obs, params)
+    assert residual.shape == (1,)

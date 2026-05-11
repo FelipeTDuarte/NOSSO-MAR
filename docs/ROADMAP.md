@@ -63,3 +63,5 @@ flowchart TB
 ## Current status
 
 See [PHASE_1_ROADMAP.md](PHASE_1_ROADMAP.md) for the detailed Phase 1 checklist.
+
+Before adding new executable pipelines beyond the current Phase 1 scope,  the repository should first stabilize specification documents covering mathematical foundations, physics losses, validation datasets by fidelity, external data integration, and benchmark compatibility.

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any, Mapping, Sequence
+
 from typing import Any
 
 import torch
@@ -159,50 +162,64 @@ def residual_mse(residual: Any) -> torch.Tensor:
 
 
 # ---------------------------------------------------------------------------
-# M1 residual helpers — additive extension (spec 11)
-# All existing functions above are unchanged.
+# M1 residual helpers exposing metadata contract for physics-informed training.
 # ---------------------------------------------------------------------------
 
-from dataclasses import dataclass as _dataclass
-
-
-@_dataclass(frozen=True)
+@dataclass(frozen=True)
 class ResidualMetadata:
     residual_id: str
     model_class: str
-    required_observables: tuple
-    required_parameters: tuple
+    required_observables: tuple[str, ...]
+    required_parameters: tuple[str, ...]
     output_layout: str
 
+class ResidualInputError(ValueError):
+    pass
 
 M1_EOM_METADATA = ResidualMetadata(
-    residual_id="M1_EOM",
-    model_class="M1",
-    required_observables=("xi", "added_mass", "radiation_damping", "excitation_force"),
-    required_parameters=("omega", "mass", "pto_damping", "stiffness"),
-    output_layout="batch x frequency x dof",
+    residual_id='M1_EOM',
+    model_class='M1',
+    required_observables=('xi', 'added_mass', 'radiation_damping', 'excitation_force'),
+    required_parameters=('omega', 'M', 'C_pto', 'K_h', 'K_pto'),
+    output_layout='batch x frequency x dof',
 )
 
 
-def compute_m1_eom_residual(
-    omega: torch.Tensor,
-    *,
-    mass: "torch.Tensor | float",
-    added_mass: torch.Tensor,
-    damping: torch.Tensor,
-    stiffness: "torch.Tensor | float",
-    displacement: torch.Tensor,
-    excitation: torch.Tensor,
-    pto_damping: "torch.Tensor | float" = 0.0,
-) -> torch.Tensor:
-    """Named alias for wec_frequency_domain_residual exposing M1 metadata contract."""
-    return wec_frequency_domain_residual(
-        omega,
-        mass=mass,
-        added_mass=added_mass,
-        damping=damping,
-        stiffness=stiffness,
-        displacement=displacement,
-        excitation=excitation,
-        pto_damping=pto_damping,
-    )
+def validate_required_keys(bundle: Mapping[str, Any], required: Sequence[str], label: str) -> None:
+    missing = [key for key in required if key not in bundle]
+    if missing:
+        raise ResidualInputError(f'{label} missing keys: {missing}')
+
+
+def compute_m1_eom_residual(observables: Mapping[str, Any], parameters: Mapping[str, Any]) -> Any:
+    validate_required_keys(observables, M1_EOM_METADATA.required_observables, 'observables')
+    validate_required_keys(parameters, M1_EOM_METADATA.required_parameters, 'parameters')
+    xi = observables['xi']
+    A = observables['added_mass']
+    B = observables['radiation_damping']
+    F_exc = observables['excitation_force']
+    omega = parameters['omega']
+    M = parameters['M']
+    C_pto = parameters['C_pto']
+    K_h = parameters['K_h']
+    K_pto = parameters['K_pto']
+    return (-omega**2 * (M + A) + 1j * omega * (B + C_pto) + (K_h + K_pto)) * xi - F_exc
+
+
+def residual_energy_norm(residual: Any) -> Any:
+    return (residual.real ** 2 + residual.imag ** 2).mean()
+
+
+def reduce_m1_residual(observables: Mapping[str, Any], parameters: Mapping[str, Any]) -> Any:
+    residual = compute_m1_eom_residual(observables, parameters)
+    return residual_energy_norm(residual)
+
+
+# Reserved extension points for future phases.
+def compute_m2_spectral_residual(*args: Any, **kwargs: Any) -> Any:
+    raise NotImplementedError('M2 spectral residual remains planned and should follow specs 11 and 12.')
+
+
+def compute_m3_field_residual(*args: Any, **kwargs: Any) -> Any:
+    raise NotImplementedError('M3 phase-resolved residual remains planned and should follow specs 11 and 12.')
+

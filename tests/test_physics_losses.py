@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from nossomar.loss.physics_losses import CurriculumWeight, damping_nonneg_loss, total_loss, wec_eom_loss
+from nossomar.loss.physics_losses import CurriculumWeight, damping_nonneg_loss, total_loss, build_default_registry
 
 
 def test_damping_nonneg_loss_penalizes_only_negative_values() -> None:
@@ -48,3 +48,14 @@ def test_total_loss_and_curriculum_weight() -> None:
     assert ramp(1) == 0.0
     assert ramp(4) == 0.5
     assert ramp(8) == 1.0
+
+def test_default_registry_contains_expected_losses():
+    registry = build_default_registry()
+    assert {'L-00', 'L-30', 'L-31', 'L-32'}.issubset(set(registry.available()))
+
+
+def test_registry_rejects_missing_inputs():
+    registry = build_default_registry()
+    term = registry.get('L-30')
+    with pytest.raises(KeyError):
+        term(predictions={'xi': 1}, targets={}, context={})

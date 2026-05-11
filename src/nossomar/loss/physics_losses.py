@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Mapping
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Protocol
 
 import torch
 import torch.nn.functional as F
 
 from nossomar.physics.residuals_torch import residual_mse, wec_frequency_domain_residual
-
 
 def damping_nonneg_loss(B_pred: torch.Tensor) -> torch.Tensor:
     """Quadratic soft penalty for negative radiation damping."""
@@ -94,49 +93,39 @@ class CurriculumWeight:
         return float(self.start_val + fraction * (self.end_val - self.start_val))
 
 
-# ---------------------------------------------------------------------------
-# Physics loss registry — additive extension (specs 11 and 12)
-# All functions and classes above are unchanged. This section adds a registry
-# for declarative activation of loss terms via YAML config.
-# ---------------------------------------------------------------------------
 
-from dataclasses import dataclass as _dataclass
-from typing import Any as _Any, Dict as _Dict, Iterable as _Iterable, Protocol as _Protocol
-
-
-class _LossFnProtocol(_Protocol):
-    def __call__(self, preds: dict, targets: dict, ctx: dict) -> torch.Tensor: ...
-
+class LossFn(Protocol):
+    def __call__(self, predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+        ...
 
 @_dataclass(frozen=True)
 class LossSpec:
     loss_id: str
     name: str
-    model_classes: tuple
-    required_observables: tuple = ()
-    required_parameters: tuple = ()
+    model_classes: tuple[str, ...]
+    required_observables: tuple[str, ...] = ()
+    required_parameters: tuple[str, ...] = ()
     supports_complex: bool = False
     default_weight: float = 1.0
     notes: str = ""
 
-
 @_dataclass
 class LossTerm:
     spec: LossSpec
-    fn: _LossFnProtocol
+    fn: LossFn
 
-    def validate_inputs(self, preds: dict, targets: dict, ctx: dict) -> None:
-        available = set(preds.keys()) | set(targets.keys()) | set(ctx.keys())
-        missing_obs = [k for k in self.spec.required_observables if k not in available]
-        missing_par = [k for k in self.spec.required_parameters if k not in available]
+    def validate_inputs(self, predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> None:
+        available = set(predictions.keys()) | set(targets.keys()) | set(context.keys())
+        missing_obs = [key for key in self.spec.required_observables if key not in available]
+        missing_par = [key for key in self.spec.required_parameters if key not in available]
         if missing_obs or missing_par:
             raise KeyError(
-                f"Loss {self.spec.loss_id} missing: observables={missing_obs} parameters={missing_par}"
+                f"Loss {self.spec.loss_id} missing inputs: observables={missing_obs}, parameters={missing_par}"
             )
 
-    def __call__(self, preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
-        self.validate_inputs(preds, targets, ctx)
-        return self.fn(preds, targets, ctx)
+    def __call__(self, predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+        self.validate_inputs(predictions, targets, context)
+        return self.fn(predictions, targets, context)
 
 
 class PhysicsLossRegistry:
@@ -155,10 +144,10 @@ class PhysicsLossRegistry:
             raise KeyError(f"Unknown loss_id: {loss_id}")
         return self._terms[loss_id]
 
-    def available(self) -> tuple:
+    def available(self) -> tuple[str, ...]:
         return tuple(sorted(self._terms.keys()))
 
-    def build_from_config(self, loss_cfgs: _Iterable[dict]) -> list:
+    def build_from_config(self, loss_cfgs: Iterable[Mapping[str, Any]]) -> list[tuple[LossTerm, float]]:
         built = []
         for cfg in loss_cfgs:
             if not cfg.get("enabled", False):
@@ -168,64 +157,90 @@ class PhysicsLossRegistry:
             built.append((self.get(lid), weight))
         return built
 
+def _loss_l00_data_fidelity(predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+    pred = predictions['prediction']
+    target = targets['target']
+    return ((pred - target) ** 2).mean()
 
-def _registry_l00_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
-    pred = preds["prediction"] if isinstance(preds["prediction"], torch.Tensor) else torch.as_tensor(preds["prediction"])
-    tgt = targets["target"] if isinstance(targets["target"], torch.Tensor) else torch.as_tensor(targets["target"])
-    return ((pred - tgt) ** 2).mean()
-
-
-def _registry_l30_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
-    return wec_eom_loss(
-        A=preds["added_mass"],
-        B=preds["radiation_damping"],
-        Fex_real=preds["excitation_force"].real,
-        Fex_imag=preds["excitation_force"].imag,
-        freq=ctx["freq"],
-        mass=ctx["mass"],
-        bpto=ctx.get("bpto", 0.0),
-        stiffness=ctx.get("stiffness", 0.0),
-        displacement=preds.get("displacement"),
-    )
+def _loss_l30_wsi_eom(predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+    xi = predictions['xi']
+    omega = context['omega']
+    M = context['M']
+    A = predictions['added_mass']
+    B = predictions['radiation_damping']
+    F_exc = predictions['excitation_force']
+    C_pto = context['C_pto']
+    K_h = context['K_h']
+    K_pto = context['K_pto']
+    residual = (-omega**2 * (M + A) + 1j * omega * (B + C_pto) + (K_h + K_pto)) * xi - F_exc
+    return (residual.real ** 2 + residual.imag ** 2).mean()
 
 
-def _registry_l31_fn(preds: dict, targets: dict, ctx: dict) -> torch.Tensor:
-    return damping_nonneg_loss(preds["radiation_damping"])
+def _loss_l31_passivity(predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+    damping = predictions['radiation_damping']
+    penalty = (0.0 - damping).clip(min=0.0)
+    return (penalty ** 2).mean()
 
+
+def _loss_l32_smooth_frequency_response(predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
+    curve = predictions['rao_amplitude']
+    second_diff = curve[..., 2:] - 2 * curve[..., 1:-1] + curve[..., :-2]
+    return (second_diff ** 2).mean()
 
 def build_default_registry() -> PhysicsLossRegistry:
-    """Build the default registry wiring existing loss functions to registry IDs."""
-    reg = PhysicsLossRegistry()
-    reg.register(LossTerm(
-        spec=LossSpec(
-            loss_id="L-00", name="data_fidelity",
-            model_classes=("M1", "M2", "M3", "M4", "M5"),
-            required_observables=("prediction", "target"),
-            default_weight=1.0,
-            notes="Reference supervised loss. Safe default for Phase 1.",
-        ),
-        fn=_registry_l00_fn,
-    ))
-    reg.register(LossTerm(
-        spec=LossSpec(
-            loss_id="L-30", name="wsi_equation_of_motion",
-            model_classes=("M1",),
-            required_observables=("added_mass", "radiation_damping", "excitation_force"),
-            required_parameters=("freq", "mass"),
-            supports_complex=True,
-            default_weight=0.1,
-            notes="Wraps existing wec_eom_loss. Capytaine-anchored F1A.",
-        ),
-        fn=_registry_l30_fn,
-    ))
-    reg.register(LossTerm(
-        spec=LossSpec(
-            loss_id="L-31", name="passivity_positivity",
-            model_classes=("M1",),
-            required_observables=("radiation_damping",),
-            default_weight=0.01,
-            notes="Wraps existing damping_nonneg_loss.",
-        ),
-        fn=_registry_l31_fn,
-    ))
-    return reg
+    registry = PhysicsLossRegistry()
+    registry.register(
+        LossTerm(
+            spec=LossSpec(
+                loss_id='L-00',
+                name='data_fidelity',
+                model_classes=('M1', 'M2', 'M3', 'M4', 'M5'),
+                required_observables=('prediction', 'target'),
+                default_weight=1.0,
+                notes='Reference supervised loss. Safe default for current Phase 1.',
+            ),
+            fn=_loss_l00_data_fidelity,
+        )
+    )
+    registry.register(
+        LossTerm(
+            spec=LossSpec(
+                loss_id='L-30',
+                name='wsi_equation_of_motion',
+                model_classes=('M1',),
+                required_observables=('xi', 'added_mass', 'radiation_damping', 'excitation_force'),
+                required_parameters=('omega', 'M', 'C_pto', 'K_h', 'K_pto'),
+                supports_complex=True,
+                default_weight=0.1,
+                notes='Primary physics loss candidate for Capytaine-anchored F1A.',
+            ),
+            fn=_loss_l30_wsi_eom,
+        )
+    )
+    registry.register(
+        LossTerm(
+            spec=LossSpec(
+                loss_id='L-31',
+                name='passivity_positivity',
+                model_classes=('M1',),
+                required_observables=('radiation_damping',),
+                default_weight=0.01,
+                notes='Regularization for non-physical negative damping outputs.',
+            ),
+            fn=_loss_l31_passivity,
+        )
+    )
+    registry.register(
+        LossTerm(
+            spec=LossSpec(
+                loss_id='L-32',
+                name='smooth_frequency_response',
+                model_classes=('M1',),
+                required_observables=('rao_amplitude',),
+                default_weight=0.001,
+                notes='Regularization that should be used carefully near resonance peaks.',
+            ),
+            fn=_loss_l32_smooth_frequency_response,
+        )
+    )
+    return registry
