@@ -80,7 +80,8 @@ class GraphNeuralOperator(BaseOperator):
         edge_attr  : (E, edge_dim)
         Returns    : (N, node_out_dim)
         """
-        assert edge_index is not None, "GNO requires edge_index"
+        if edge_index is not None:
+                raise ValueError("GNO requires edge_index")
         h = self.encoder(u)
         for layer in self.layers:
             h = layer(h, edge_index, edge_attr)

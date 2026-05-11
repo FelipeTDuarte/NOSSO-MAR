@@ -20,8 +20,10 @@ def _grad(
         grad_outputs=grad_outputs,
         create_graph=True,
         retain_graph=True,
-        allow_unused=False,
+        allow_unused=True,
     )[0]
+    if gradient is None:
+        return torch.zeros_like(inputs)
     return gradient
 
 
