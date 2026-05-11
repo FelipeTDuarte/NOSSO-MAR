@@ -98,7 +98,7 @@ class LossFn(Protocol):
     def __call__(self, predictions: Mapping[str, Any], targets: Mapping[str, Any], context: Mapping[str, Any]) -> Any:
         ...
 
-@_dataclass(frozen=True)
+@dataclass(frozen=True)
 class LossSpec:
     loss_id: str
     name: str
@@ -109,7 +109,7 @@ class LossSpec:
     default_weight: float = 1.0
     notes: str = ""
 
-@_dataclass
+@dataclass
 class LossTerm:
     spec: LossSpec
     fn: LossFn
@@ -132,7 +132,7 @@ class PhysicsLossRegistry:
     """Lightweight registry for declarative loss activation from YAML configs."""
 
     def __init__(self) -> None:
-        self._terms: _Dict[str, LossTerm] = {}
+        self._terms: Dict[str, LossTerm] = {}
 
     def register(self, term: LossTerm) -> None:
         if term.spec.loss_id in self._terms:

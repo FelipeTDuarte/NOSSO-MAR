@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import torch
-
+import pytest
 from nossomar.loss.physics_losses import CurriculumWeight, damping_nonneg_loss, total_loss, build_default_registry
 
 
