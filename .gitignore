@@ -26,3 +26,4 @@ checkpoints/
 .venv-linux/
 .venv/
 _archive/
+.venv-wsl/
