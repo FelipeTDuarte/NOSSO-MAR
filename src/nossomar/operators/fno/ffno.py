@@ -44,9 +44,11 @@ class FactorisedSpectralConv2d(nn.Module):
         # --- y-direction ---
         yf = torch.view_as_real(torch.fft.rfft(x2, dim=-2, norm="ortho"))
         out2 = torch.zeros_like(yf)
-        out2[:, :, :self.wy.shape[2], :] = self._mul1d(
-            yf[:, :, :self.wy.shape[2], :].permute(0,1,3,2), self.wy
-        ).permute(0,1,3,2)
+        x_ft_c = torch.view_as_complex(yf[:, :, :self.wy.shape[2], :])
+        out_c = torch.einsum("bcx,ocx->box",
+                              x_ft_c,
+                              torch.view_as_complex(self.wy))
+        out2[:, :, :self.wy.shape[2], :] = torch.view_as_real(out_c)
         return torch.fft.irfft(torch.view_as_complex(out2), n=H, dim=-2, norm="ortho")
 
 
