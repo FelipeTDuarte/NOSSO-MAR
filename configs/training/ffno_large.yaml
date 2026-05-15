@@ -1,5 +1,6 @@
 operator:    ffno2d
-modes:       [24, 24]
+modes_x:      24
+modes_y:      24
 width:       128
 n_layers:    6
 factorized:  true

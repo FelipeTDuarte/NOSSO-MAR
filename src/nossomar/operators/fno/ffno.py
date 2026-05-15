@@ -19,37 +19,43 @@ class FactorisedSpectralConv2d(nn.Module):
     """
     F(x) ≈ F_y^{-1}[ W_y · F_x^{-1}[ W_x · F_x[u] ] ]
     Two sequential 1-D spectral convolutions instead of one 2-D.
+
+    Weights are stored as complex parameters to avoid view_as_complex
+    on the weight tensors at every forward pass.
+
+    Shape conventions:
+        rfft(x, dim=-1) → (B, C, H, W//2+1) — H is a free spatial dim for x-conv
+        rfft(x, dim=-2) → (B, C, H//2+1, W) — W is a free spatial dim for y-conv
+        Both einsums therefore carry the free spatial dimension explicitly.
     """
 
     def __init__(self, channels: int, modes_x: int, modes_y: int):
         super().__init__()
         scale = 1.0 / channels
-        self.wx = nn.Parameter(scale * torch.randn(channels, channels, modes_x, 2))
-        self.wy = nn.Parameter(scale * torch.randn(channels, channels, modes_y, 2))
+        # Complex parameters: (C_out, C_in, modes)
+        self.wx = nn.Parameter(
+            scale * torch.randn(channels, channels, modes_x, dtype=torch.cfloat))
+        self.wy = nn.Parameter(
+            scale * torch.randn(channels, channels, modes_y, dtype=torch.cfloat))
 
-    def _mul1d(self, a, w):
-        return torch.view_as_real(
-            torch.einsum("bcx,ocx->box",
-                         torch.view_as_complex(a),
-                         torch.view_as_complex(w)))
-
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, C, H, W = x.shape
-        # --- x-direction ---
-        xf = torch.view_as_real(torch.fft.rfft(x, dim=-1, norm="ortho"))
+
+        # --- x-direction: rfft along last dim, H is the free spatial dim ---
+        xf = torch.fft.rfft(x, dim=-1, norm="ortho")  # (B, C, H, W//2+1)
+        Mx = self.wx.shape[2]
         out = torch.zeros_like(xf)
-        out[:, :, :, :self.wx.shape[2]] = self._mul1d(
-            xf[:, :, :, :self.wx.shape[2]], self.wx)
-        x2 = torch.fft.irfft(torch.view_as_complex(out), n=W, dim=-1, norm="ortho")
-        # --- y-direction ---
-        yf = torch.view_as_real(torch.fft.rfft(x2, dim=-2, norm="ortho"))
+        out[:, :, :, :Mx] = torch.einsum(
+            "bchx,ocx->bohx", xf[:, :, :, :Mx], self.wx)  # h is free
+        x2 = torch.fft.irfft(out, n=W, dim=-1, norm="ortho")  # (B, C, H, W)
+
+        # --- y-direction: rfft along second-to-last dim, W is the free spatial dim ---
+        yf = torch.fft.rfft(x2, dim=-2, norm="ortho")  # (B, C, H//2+1, W)
+        My = self.wy.shape[2]
         out2 = torch.zeros_like(yf)
-        x_ft_c = torch.view_as_complex(yf[:, :, :self.wy.shape[2], :])
-        out_c = torch.einsum("bcx,ocx->box",
-                              x_ft_c,
-                              torch.view_as_complex(self.wy))
-        out2[:, :, :self.wy.shape[2], :] = torch.view_as_real(out_c)
-        return torch.fft.irfft(torch.view_as_complex(out2), n=H, dim=-2, norm="ortho")
+        out2[:, :, :My, :] = torch.einsum(
+            "bcyw,ocy->boyw", yf[:, :, :My, :], self.wy)  # w is free
+        return torch.fft.irfft(out2, n=H, dim=-2, norm="ortho")  # (B, C, H, W)
 
 
 class FFNO2d(BaseOperator):

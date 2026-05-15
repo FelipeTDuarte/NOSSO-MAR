@@ -34,6 +34,14 @@ def operator_sweep_configs() -> dict[str, dict[str, int | str]]:
             "modes_y": 8,
             "n_layers": 2,
         },
+        "ffno2d": {
+            "in_channels": 5,
+            "out_channels": 3,
+            "width": 24,
+            "modes_x": 8,
+            "modes_y": 8,
+            "n_layers": 2,
+        },
         "wno": {
             "in_channels": 5,
             "out_channels": 3,
@@ -78,6 +86,10 @@ def run_smoke_sweep() -> list[SweepResult]:
     fno_out = fno2d(grid_input)
     results.append(SweepResult("fno2d", tuple(fno_out.shape), fno2d.count_parameters()))
 
+    ffno2d = build_operator("ffno2d", cfgs["ffno2d"])
+    ffno_out = ffno2d(grid_input)
+    results.append(SweepResult("ffno2d", tuple(ffno_out.shape), ffno2d.count_parameters()))
+
     wno = build_operator("wno", cfgs["wno"])
     wno_out = wno(grid_input)
     results.append(SweepResult("wno", tuple(wno_out.shape), wno.count_parameters()))
@@ -97,8 +109,8 @@ def run_smoke_sweep() -> list[SweepResult]:
         SweepResult("deeponet", tuple(deep_out.shape), deeponet.count_parameters())
     )
 
-    rino = build_operator("rino2d", cfgs["rino2d"])
-    rino_out = rino(grid_input, query_points=query_points)
-    results.append(SweepResult("rino2d", tuple(rino_out.shape), rino.count_parameters()))
+    rino2d = build_operator("rino2d", cfgs["rino2d"])
+    rino_out = rino2d(grid_input, query_points=query_points)
+    results.append(SweepResult("rino2d", tuple(rino_out.shape), rino2d.count_parameters()))
 
     return results
